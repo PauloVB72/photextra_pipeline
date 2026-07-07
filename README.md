@@ -195,6 +195,6 @@ All tests currently pass.
 
 ## Credits
 
-Developed by Paulo Vásquez (CHANCES). Part of the implementation,
+Developed by Paulo Vásquez Bustos. Part of the implementation,
 debugging, and documentation of this repo was done with assistance from
 Claude (Anthropic).

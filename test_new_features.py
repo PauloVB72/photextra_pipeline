@@ -7,7 +7,7 @@ Covers (see the task brief, Parts 1-7):
  - the WCS-alignment diagnostic for WISE/GALEX vs Legacy (Part 3b),
  - the expanded spectral-line extraction on real cached DESI spectra
    (Part 6),
- - a both_method="cigale" smoke test on real cached targets (Part 4/7)
+ - a cigale_run=True smoke test on real cached targets (Part 4/7)
    (skipped automatically if the "cigale" conda env / cached products are
    not available on this machine).
 
@@ -132,7 +132,7 @@ def test_separation_config_default_is_pair():
     assert pipe.separation == "pair"
     assert pipe.aperture_mode == "mask"
     assert pipe.mode == "photometry"
-    assert pipe.both_method == "own"
+    assert pipe.cigale_run is False
 
 
 # ===========================================================================
@@ -153,11 +153,21 @@ def test_separation_validation():
         Pipeline(config=cfg, use_xdebpair=False)
 
 
-def test_both_method_validation():
+def test_cigale_run_enables_cigale():
+    """cigale_run is the single switch for the CIGALE SED fit, uniform
+    across all modes (both_method was removed — cigale_run replaces it)."""
     cfg = dict(BASE_CFG)
-    cfg["both_method"] = "not_a_method"
-    with pytest.raises(ValueError):
-        Pipeline(config=cfg, use_xdebpair=False)
+    cfg["mode"] = "both"
+    cfg["cigale_run"] = True
+    pipe = Pipeline(config=cfg, use_xdebpair=False)
+    assert pipe.cigale_run is True
+    assert pipe._cigale_enabled() is True
+
+    cfg2 = dict(BASE_CFG)
+    cfg2["mode"] = "both"
+    pipe2 = Pipeline(config=cfg2, use_xdebpair=False)
+    assert pipe2.cigale_run is False
+    assert pipe2._cigale_enabled() is False
 
 
 def test_config_kwarg_override():
@@ -165,11 +175,8 @@ def test_config_kwarg_override():
     (backward compat for run_mkw8_full.py / timing_*.py driver scripts)."""
     cfg = dict(BASE_CFG)
     cfg["mode"] = "photometry"
-    cfg["both_method"] = "own"
-    pipe = Pipeline(config=cfg, use_xdebpair=False, mode="both",
-                    both_method="cigale")
+    pipe = Pipeline(config=cfg, use_xdebpair=False, mode="both")
     assert pipe.mode == "both"
-    assert pipe.both_method == "cigale"
 
 
 # ===========================================================================
@@ -382,7 +389,7 @@ def test_expanded_line_extraction_real_spectrum(tid):
 
 
 # ===========================================================================
-# Part 4/7: both_method="cigale" smoke test (real cached targets)
+# Part 4/7: cigale_run=True smoke test (real cached targets)
 # ===========================================================================
 
 def _cigale_env_available():
@@ -423,7 +430,7 @@ def test_cigale_input_row_builds_from_real_cached_products(tid):
                     reason="conda not on PATH; cannot exercise the real "
                            "'cigale' environment")
 def test_cigale_full_run_real_targets():
-    """Full both_method='cigale' smoke test: runs actual `pcigale run` on
+    """Full cigale_run=True smoke test: runs actual `pcigale run` on
     2 real cached MKW8 targets. Skipped when the 'cigale' conda env isn't
     installed on this machine (checked indirectly via conda availability;
     a missing env still fails clearly inside run_pcigale)."""

@@ -159,7 +159,7 @@ def print_config_summary(console, config, config_path, targets):
     tbl.add_column(style="white")
     tbl.add_row("config", str(config_path))
     tbl.add_row("mode", str(config.get("mode", "photometry")))
-    tbl.add_row("both_method", str(config.get("both_method", "own")))
+    tbl.add_row("cigale_run", str(config.get("cigale_run", False)))
     tbl.add_row("aperture_mode", str(phot.get("aperture_mode", "mask")))
     tbl.add_row("separation", str(phot.get("separation", "pair")))
     tbl.add_row("surveys", ", ".join(config.get("surveys") or []))

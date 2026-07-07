@@ -192,3 +192,9 @@ The test suite currently contains **23 tests**, covering:
 - smoke tests for `both_method: cigale`.
 
 All tests currently pass.
+
+## Credits
+
+Developed by Paulo Vásquez (CHANCES). Part of the implementation,
+debugging, and documentation of this repo was done with assistance from
+Claude (Anthropic).

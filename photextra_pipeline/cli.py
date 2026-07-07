@@ -54,44 +54,36 @@ _BANNER_LINES = [
 # scattered white stars. Base style per line = medium blue (arm body); the
 # navy tendrils, yellow cores and white stars are set via inline markup.
 _GALAXY_LINES = [
-    ("⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[bright_white]⢀⣀⣀⡀[/][white]⠒⠒⠦⣄⡀[/]⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀", ""),
-    ("⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[navy_blue]⢀⣤⣶⡾⠿⠿⠿⠿⣿⣿⣶⣦⣄[/][slate_blue1]⠙⠷⣤⡀[/]⠀⠀⠀⠀⠀⠀", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 03", ""),
-    ("⠀⠀⠀⠀[blue_violet]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][blue_violet]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 04", ""),
-    ("⠀⠀⠀⠀[slate_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][slate_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 05", ""),
-    ("⠀⠀⠀⠀[deep_sky_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][deep_sky_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 06", ""),
-    ("⠀⠀⠀⠀[cyan]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][cyan]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 07", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 08", ""),
-    ("⠀⠀⠀⠀[blue_violet]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][blue_violet]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 09", ""),
-    ("⠀⠀⠀⠀[slate_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][slate_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 10", ""),
-    ("⠀⠀⠀⠀[deep_sky_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][deep_sky_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 11", ""),
-    ("⠀⠀⠀⠀[cyan]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][cyan]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 12", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 13", ""),
-    ("⠀⠀⠀⠀[blue_violet]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][blue_violet]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 14", ""),
-    ("⠀⠀⠀⠀[slate_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][slate_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 15", ""),
-    ("⠀⠀⠀⠀[deep_sky_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][deep_sky_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 16", ""),
-    ("⠀⠀⠀⠀[cyan]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][cyan]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 17", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 18", ""),
-    ("⠀⠀⠀⠀[blue_violet]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][blue_violet]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 19", ""),
-    ("⠀⠀⠀⠀[slate_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][slate_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 20", ""),
-    ("⠀⠀⠀⠀[deep_sky_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][deep_sky_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 21", ""),
-    ("⠀⠀⠀⠀[cyan]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][cyan]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 22", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 23", ""),
-    ("⠀⠀⠀⠀[blue_violet]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][blue_violet]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 24", ""),
-    ("⠀⠀⠀⠀[slate_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][slate_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 25", ""),
-    ("⠀⠀⠀⠀[deep_sky_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][deep_sky_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 26", ""),
-    ("⠀⠀⠀⠀[cyan]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][cyan]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 27", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 28", ""),
-    ("⠀⠀⠀⠀[blue_violet]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][blue_violet]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 29", ""),
-    ("⠀⠀⠀⠀[slate_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][slate_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 30", ""),
-    ("⠀⠀⠀⠀[deep_sky_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][deep_sky_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 31", ""),
-    ("⠀⠀⠀⠀[cyan]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][cyan]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 32", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 33", ""),
-    ("⠀⠀⠀⠀[blue_violet]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][blue_violet]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 34", ""),
-    ("⠀⠀⠀⠀[slate_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][slate_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 35", ""),
-    ("⠀⠀⠀⠀[deep_sky_blue1]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][deep_sky_blue1]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 36", ""),
-    ("⠀⠀⠀⠀[cyan]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][cyan]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 37", ""),
-    ("⠀⠀⠀⠀[medium_purple3]⢀⣴⣿⠿⠋[/][red]⠈⠒[/][dark_orange3]⣶[/][gold1]⣿[/][yellow]⣿[/][bright_white]⣿[/][yellow]⣿[/][gold1]⣶[/][medium_purple3]⠙⠿⣦[/]⠀⠀⠀⠀⠀⠀⠀⠀ 38", ""),
+    # Fila 1 (Punta exterior del brazo derecho)
+    ("⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[navy_blue]⣀⣤⣴⣲⣶⣶⣦⣄⠀⠀⠀", ""),
+    # Fila 2
+    ("⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[deep_sky_blue1]⣠⣾⣿⣿⣽⡷⠾⣾⣭⣟⣷⡄⠀", ""),
+    # Fila 3
+    ("⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[medium_purple1]⣼⣿⣵⣿⠟⠁⠀⠀⠀⠈⢻⣿⣿⡀", ""),
+    # Fila 4 (Acercándose al núcleo)
+    ("⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[magenta1]⣸⢯⡿⡿⢁⣤⣶⣶⣄⠀⠀⠀⢻⣿⡇", ""),
+    # Fila 5 (Borde superior del núcleo)
+    ("⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[white]⢠⣿⢺⣽⣳⣿⢛⣽⣯⣿⡆⠀⠀⠀⠛⠃", ""),
+    # Fila 6 (Comienza brazo izquierdo, centro derecha brillante)
+    ("⠀⠀⠀⠀[navy_blue]⢠⣶⣟⣿⣿⠆⠀[deep_sky_blue1]⢀⣀⣤⣤⣶⢶⣤⣤⣄⡀⠀⠀⠀⠀⠀⠀[white]⢸⣿⡁⣿⣿⠓⡍⢍⠻⣿⣇⠀⠀⠀⠀⠀", ""),
+    # Fila 7
+    ("⠀⠀⠀[deep_sky_blue1]⢀⡿⣹⡏⣠⣤⡴⣶⡛[medium_purple1]⣻⠽⠿⠿[white]⠿⠿⣿⣿⡿⣷⣄⣀⠀⠀⠀[white]⢸⣿⣷⡘⢇⠀⠀⢑⢱⣽⣿⠀⠀⠀⠀⠀", ""),
+    # Fila 8 (Centro absoluto)
+    ("⠀⠀⠀[medium_purple1]⢸⣿⣻⣿⣿⢋⠾⠋[magenta1]⡾⢿⡦⣴⣶[white]⣯⡿⢻⣟⣛⣀⣙⢛⣛⣻⠿⠯⡿⢿[magenta1]⡻⢶⡡⢀⠈⣾⣧⡿⠀⠀⠀⠀⠀", ""),
+    # Fila 9
+    ("⠀⠀⠀[magenta1]⠈⣿⣎⢿⡟⠸⠢⢫⢻[white]⣷⣮⢉⣽⢶⣿⠯⠛⠛⠋⠉⢳⣿⣟[magenta1]⠿⣷⢶[medium_purple1]⣬⣛⣓⣊⡽[deep_sky_blue1]⢰⡿⡽⠃⠀⠀⠀⠀⠀", ""),
+    # Fila 10
+    ("⠀⠀⠀⠀[medium_purple1]⠹⣿⣶⣉⠤⡄⠀[magenta1]⠐⡻⣿⣯⣞⠉⠀⠀⠀⠀⠀⠀⠀[medium_purple1]⠙⢯⣗⡦⣍⣻⣿⡷[deep_sky_blue1]⢟⣵⣿⠟⠁⠀⠀⠀⠀⠀⠀", ""),
+    # Fila 11
+    ("⠀⠀⠀⠀⠀[deep_sky_blue1]⠙⢿⣟⡷⠶⣓⡇⡢⢻⣧⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀[navy_blue]⠈⠙⠛⠓⠒⠚⠋⠉⠀⠀⠀⠀⠀⠀⠀⠀⠀", ""),
+    # Fila 12 (Cola del brazo izquierdo)
+    ("[navy_blue]⢀⣤⡀⠀⠀⠀⠀[deep_sky_blue1]⠙⠻⢿⣿⣾⢷⢸⣯⡇⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀", ""),
+    # Fila 13
+    ("[navy_blue]⠈⣿⣻⣷⣤⣀⣀⣀⣠⣤⣞⣷⣫[deep_sky_blue1]⣿⡟⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀", ""),
+    # Fila 14
+    ("⠀[navy_blue]⠈⠻⢷⣽⣛⣿⡷⣷⣞⣯⣾⠿⠋⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀", ""),
+    # Fila 15 (Punta exterior del brazo izquierdo)
+    ("⠀⠀⠀⠀[navy_blue]⠉⠙⠛⠛⠛⠛⠉⠁⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀⠀", "")
 ]
 # banner gradient colors, one per line
 _BANNER_COLORS = ("bold magenta", "bold medium_purple", "bold deep_sky_blue1")

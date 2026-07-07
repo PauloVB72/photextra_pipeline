@@ -1,0 +1,355 @@
+<!DOCTYPE html>
+<html><head><meta charset="utf-8">
+<style>
+body { font-family: -apple-system, Helvetica, Arial, sans-serif; max-width: 900px; margin: 40px auto; line-height: 1.5; color: #1a1a1a; }
+h1 { border-bottom: 3px solid #333; padding-bottom: 8px; }
+h2 { border-bottom: 1px solid #ccc; padding-bottom: 4px; margin-top: 2em; }
+code { background: #f4f4f4; padding: 2px 5px; border-radius: 3px; font-size: 0.9em; }
+pre { background: #f4f4f4; padding: 12px; border-radius: 5px; overflow-x: auto; font-size: 0.85em; }
+pre code { background: none; padding: 0; }
+table { border-collapse: collapse; width: 100%; margin: 1em 0; }
+th, td { border: 1px solid #ccc; padding: 6px 10px; text-align: left; font-size: 0.9em; }
+th { background: #eee; }
+blockquote { border-left: 4px solid #ccc; margin-left: 0; padding-left: 1em; color: #555; }
+</style></head><body><h1>Tutorial: de photextra_pipeline a CIGALE (fotometría + espectroscopía DESI)</h1>
+<p>Este documento explica, paso a paso, cómo instalar el CIGALE usado en este
+proyecto, cómo se registraron los filtros propios (CHANCES continuum +
+Legacy/DECam), cómo funciona la espectroscopía nativa DESI (<code>use_spectro</code>), y
+cómo usar el <code>cigale_input.txt</code> que arma <code>scripts/build_cigale_input.py</code> a
+partir de los productos de <code>photextra_pipeline</code>.</p>
+<p>Todos los paths de ejemplo son los reales de esta máquina; ajústelos si
+cambia la ubicación del código.</p>
+<hr />
+<h2>1. Instalación de CIGALE</h2>
+<p>Se usa un fork de CIGALE (<code>cigale_spec</code>) con soporte de ajuste espectroscópico
+nativo (<code>use_spectro=True</code>), que <strong>no</strong> es el CIGALE oficial estándar (ese no
+trae esta funcionalidad lista para usar de la misma forma). El código fuente
+vive en:</p>
+<pre><code>/home/polo/Escritorio/PHD/code/cigale-spec/
+</code></pre>
+<h3>1.1 Crear el entorno conda</h3>
+<pre><code class="language-bash">conda create -n cigale python=3.13 -y
+conda activate cigale
+</code></pre>
+<h3>1.2 Instalar dependencias + el paquete</h3>
+<pre><code class="language-bash">cd /home/polo/Escritorio/PHD/code/cigale-spec
+pip install .
+</code></pre>
+<p>Esto instala <code>pcigale</code>, <code>pcigale_filters</code> y <code>pcigale_plots</code> (además de sus
+dependencias: astropy, configobj, matplotlib, numpy, rich, scipy). Confirmar:</p>
+<pre><code class="language-bash">python -c &quot;import pcigale; print(pcigale.__file__)&quot;
+pcigale --help
+</code></pre>
+<h3>1.3 Notas</h3>
+<ul>
+<li>Se ajustaron los threads de BLAS a 1 en otros paquetes del proyecto
+  (XpectraFit) para evitar contención de CPU en paralelización — no aplica
+  directamente a CIGALE, pero si se ejecuta todo en el mismo proceso Python,
+  hay que tenerlo en cuenta.</li>
+<li><code>cores = N</code> en <code>pcigale.ini</code> reparte el cómputo de modelos en N procesos.
+  Usar el número real de cores de la máquina.</li>
+</ul>
+<hr />
+<h2>2. Filtros propios registrados</h2>
+<p>CIGALE trae un catálogo de filtros estándar (GALEX, SDSS, WISE, 2MASS, etc.)
+pero <strong>no</strong> trae las bandas custom que usa este proyecto:</p>
+<ol>
+<li><strong>10 filtros continuum CHANCES</strong> (tophats angostos, diseñados para evitar
+   líneas de emisión y bandas telúricas, usados para hacer fotometría
+   sintética directamente del espectro DESI).</li>
+<li><strong>Curvas reales DECam/Legacy Survey g/r/z</strong> (namespaced aparte para no
+   confundirlas con un SDSS genérico).</li>
+</ol>
+<p>Los <code>.dat</code> ya generados están en <code>filters/</code> junto a este tutorial, listos
+para copiar/registrar en cualquier instalación nueva de CIGALE. También están
+los scripts que los generan, por si cambian los filtros CHANCES o aparecen
+nuevas bandas.</p>
+<h3>2.1 Filtros continuum CHANCES (<code>chances.*</code>)</h3>
+<p>Fuente de verdad: <code>photextra_pipeline/data/chances_continuum_filters.csv</code>
+(columnas <code>name, lambda_min, lambda_max, enabled, notes</code>, en Å). Son tophats
+puros (transmisión 1 dentro del rango, 0 fuera), pensados para sintetizar
+fotometría de banda ancha directo del espectro sin caer en líneas de emisión
+fuertes ni en bandas telúricas (ver columna <code>notes</code> del CSV para el criterio
+de cada uno).</p>
+<p>Filtros habilitados actualmente (<code>enabled=1</code>):</p>
+<table>
+<thead>
+<tr>
+<th>Nombre CIGALE</th>
+<th>λ_min (Å)</th>
+<th>λ_max (Å)</th>
+<th>Motivo</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>chances.M3992</code></td>
+<td>3750</td>
+<td>4230</td>
+<td>continuo azul del salto de 4000 Å</td>
+</tr>
+<tr>
+<td><code>chances.M4542</code></td>
+<td>4440</td>
+<td>4650</td>
+<td>evita Hβ/OIII</td>
+</tr>
+<tr>
+<td><code>chances.M5200</code></td>
+<td>5100</td>
+<td>5450</td>
+<td>lado azul de Mgb</td>
+</tr>
+<tr>
+<td><code>chances.M5600</code></td>
+<td>5450</td>
+<td>5800</td>
+<td>continuo Mgb/Fe, lado rojo</td>
+</tr>
+<tr>
+<td><code>chances.N6097</code></td>
+<td>6000</td>
+<td>6200</td>
+<td>antes de NaD</td>
+</tr>
+<tr>
+<td><code>chances.N6350</code></td>
+<td>6200</td>
+<td>6480</td>
+<td>evita el complejo Hα/NII/SII</td>
+</tr>
+<tr>
+<td><code>chances.N6908</code></td>
+<td>6900</td>
+<td>7020</td>
+<td>evita telúrica O2-B</td>
+</tr>
+<tr>
+<td><code>chances.O7473</code></td>
+<td>7200</td>
+<td>7580</td>
+<td>evita telúrica O2-A</td>
+</tr>
+<tr>
+<td><code>chances.O8000</code></td>
+<td>7810</td>
+<td>8090</td>
+<td>evita H2O moderada</td>
+</tr>
+<tr>
+<td><code>chances.O8550</code></td>
+<td>8390</td>
+<td>8800</td>
+<td>cubre el triplete de CaII (real, no telúrica)</td>
+</tr>
+</tbody>
+</table>
+<p>Regenerar/registrar (por ejemplo si se agrega un filtro nuevo al CSV):</p>
+<pre><code class="language-bash">conda activate cigale
+cd photextra_pipeline/scripts
+python make_cigale_filters.py            # lee el CSV, escribe .dat, registra
+# --no-register  -&gt; solo escribe los .dat, no toca la DB de CIGALE
+# --include-disabled -&gt; también genera los que tienen enabled=0
+</code></pre>
+<p>Internamente escribe cada filtro como un <code>.dat</code> de 3 líneas de cabecera +
+tabla wavelength/transmisión:</p>
+<pre><code># chances.M3992
+# photon
+# CHANCES continuum tophat 3750-4230A -- ...
+3745.00 0.000000
+3750.00 1.000000
+...
+</code></pre>
+<p>Tipo <code>photon</code> (no <code>energy</code>): así integra igual que <code>xpectrafit</code>
+(<code>&lt;f&gt; = ∫f·T·λ dλ / ∫T·λ dλ</code>), para que la fotometría sintética del pipeline y
+los flujos de modelo de CIGALE se calculen con la misma convención.</p>
+<h3>2.2 Filtros reales DECam/Legacy (<code>chances_legacy.*</code>)</h3>
+<p>Curvas de throughput real del sistema DECam (no genéricas), tomadas de
+<code>hostphot</code> (la misma librería que usa <code>photextra_pipeline.downloader</code> para
+bajar los cutouts de Legacy Survey — son las curvas correctas porque son las
+mismas contra las que está definida la fotometría real):</p>
+<pre><code>hostphot/filters/LegacySurvey/DECAM_{g,r,z}.dat
+</code></pre>
+<p>Regenerar/registrar:</p>
+<pre><code class="language-bash">conda activate cigale
+cd photextra_pipeline/scripts
+python make_cigale_legacy_filters.py
+# --srcdir PATH   -&gt; si hostphot está en otro conda env
+# --no-register   -&gt; solo escribe los .dat
+</code></pre>
+<p>Tipo <code>energy</code> (no <code>photon</code>): es la convención correcta para una curva de
+respuesta real de instrumento integrada contra F_λ, igual que el resto de
+filtros reales ya en la base (galex.FUV, wise.W1, sdss.*).</p>
+<h3>2.3 Verificar qué quedó registrado</h3>
+<pre><code class="language-bash">pcigale-filters list | grep -i &quot;chances\|decam&quot;
+</code></pre>
+<p>Si se necesita reinstalar CIGALE desde cero, ejecutar ambos scripts
+(<code>make_cigale_filters.py</code> y <code>make_cigale_legacy_filters.py</code>) antes de armar
+cualquier <code>pcigale.ini</code> que los use — si un filtro no está registrado, CIGALE
+falla al validar la configuración (<code>Unknown filter ...</code>).</p>
+<hr />
+<h2>3. Espectroscopía nativa DESI (<code>use_spectro=True</code>)</h2>
+<p>Este es el método recomendado (ver comparación de métodos, sección 5): en vez
+de sintetizar fotometría de banda angosta, se ajusta el <strong>espectro completo</strong>
+directamente. Requiere 3 piezas.</p>
+<h3>3.1 Espectro cacheado → FITS "prism"</h3>
+<p><code>photextra_pipeline</code> cachea el espectro DESI en <code>.npz</code> (<code>wave</code> en Å, <code>flux</code>
+en 1e-17 erg/s/cm²/Å, <code>ivar</code>). CIGALE (<code>read_prism()</code>) espera un FITS con
+tabla binaria de 3 columnas: <code>WAVELENGTH</code> (micron), <code>FLUX</code> (mJy),
+<code>FLUX_ERROR</code> (mJy). Conversión:</p>
+<pre><code class="language-bash">python scripts/convert_desi_to_prism_fits.py desi_&lt;tid&gt;.npz desi_spec_&lt;tid&gt;.fits
+</code></pre>
+<p>Clave física de la conversión (F_λ → F_ν en mJy):</p>
+<pre><code class="language-python">conv = wave**2 / C_AA_S * 1e26      # (erg/s/cm2/A) -&gt; mJy
+fnu  = flam * conv
+</code></pre>
+<p><code>build_cigale_input.py</code> (sección 4) hace esto automáticamente, no hace falta
+ejecutarlo a mano salvo para depuración.</p>
+<h3>3.2 Archivo de dispersión espectral</h3>
+<p>CIGALE arma internamente una grilla fija de 512 puntos
+(<code>new_wavegrid()</code>, paso <code>λ/(2.2·R)</code>) a partir de un archivo de 3 columnas
+<code>WAVELENGTH Dlambda R</code>. La resolución nativa de DESI (R~4500-12000, ~0.8
+Å/pix) en 512 puntos solo cubriría ~185 Å — por eso se calcula un <strong>R
+efectivo constante</strong> que fuerza los 512 puntos a cubrir todo el rango
+observado (~3600-9824 Å):</p>
+<pre><code class="language-bash">python scripts/build_desi_dispersion_file.py desi_&lt;tid_cualquiera&gt;.npz desi_disp.txt
+</code></pre>
+<p>Un solo <code>desi_disp.txt</code> sirve para todos los targets (misma instrumentación
+DESI, aproximación razonable).</p>
+<h3>3.3 Columnas extra en el <code>data_file</code></h3>
+<p>Además de la fotometría de banda ancha, el <code>data_file</code> necesita 3 columnas
+para activar el modo espectro (nombres específicos de este fork —
+<code>spectrum</code>/<code>mode</code>/<code>norm</code>, <strong>no</strong> los <code>spec_name</code>/<code>disperser</code>/<code>norm_method</code>
+del CIGALE oficial):</p>
+<pre><code>id redshift galex.FUV galex.FUV_err ... WISE2_err  spectrum  mode  norm
+2842599849197568 0.029661 ...  /ruta/desi_spec_2842599849197568.fits  desi  wave
+</code></pre>
+<h3>3.4 <code>pcigale.ini</code></h3>
+<pre><code class="language-ini">data_file = cigale_input.txt
+use_spectro = True
+spectral_res_file = desi_disp.txt
+sed_modules = sfhdelayed, bc03, nebular, dustatt_modified_starburst, dl2014, redshifting
+
+[analysis_params]
+  bands = galex.FUV, galex.NUV, chances_legacy.DECam_g, chances_legacy.DECam_r, chances_legacy.DECam_z, WISE1, WISE2
+</code></pre>
+<p><code>[analysis_params].bands</code> lleva <strong>solo</strong> la fotometría de banda ancha —
+nunca las columnas del espectro, esas las maneja <code>use_spectro</code> internamente.</p>
+<h3>3.5 Trampa conocida: la key <code>bands</code> de nivel superior</h3>
+<p>Hay una key <code>bands = ...</code> <strong>fuera de cualquier sección</strong> (antes de
+<code>[sed_modules_params]</code>) que este fork sí usa en serio
+(<code>pcigale/session/configuration.py:274</code>), distinta de
+<code>[analysis_params].bands</code>. Se recalcula sola con <code>pcigale genconf</code>
+(intersección columnas-del-<code>data_file</code> ∩ filtros registrados en la DB). Si
+queda una versión vieja (por ejemplo de un experimento anterior con 512
+pseudo-filtros <code>desi_Band_*</code>, ver <code>register_desi_pseudo_filters.py</code> — un
+método alternativo que se probó y <strong>no</strong> se terminó usando), falla con:</p>
+<pre><code>Exception: desi_Band_000 to be taken in the fit but not present in the observation table.
+</code></pre>
+<p><strong>Fix:</strong> dejar que <code>pcigale genconf</code> la recalcule, o setearla a mano igual a
+<code>[analysis_params].bands</code> + sufijo <code>_err</code> en cada banda.</p>
+<p><strong>Atención:</strong> <code>pcigale genconf</code> reinicia <strong>todos</strong> los parámetros de
+<code>[sed_modules_params]</code> a sus valores por defecto. Si se ejecuta <code>genconf</code>
+después de armar la grilla de parámetros (tau_main, age_main, E_BV_lines,
+etc.), hay que volver a aplicarla después — nunca antes de ejecutar
+<code>pcigale run</code>.</p>
+<hr />
+<h2>4. De productos de photextra a <code>cigale_input.txt</code></h2>
+<p><code>photextra_pipeline</code> en sí <strong>no</strong> exporta un <code>cigale_input.txt</code> directamente
+— genera, por target, dos productos que sí contienen todo lo necesario:</p>
+<pre><code>{RUN_DIR}/{tid}/products/{tid}_combined.csv     # fotometría total+fibra, z, líneas de emisión
+{RUN_DIR}/{tid}/spectroscopy/desi_{tid}.npz     # espectro DESI crudo cacheado
+</code></pre>
+<p>El puente entre esos productos y CIGALE es
+<code>scripts/build_cigale_input.py</code> (generaliza lo que se armó a mano en las
+corridas piloto). Arma <strong>los dos formatos de <code>cigale_input.txt</code></strong> a la vez
+(fotometría+filtros+líneas, y espectro nativo), para poder compararlos.</p>
+<h3>4.1 Qué columnas usa de <code>{tid}_combined.csv</code></h3>
+<ul>
+<li><code>z</code> → columna <code>redshift</code></li>
+<li><code>phot_{survey}_flux_mjy</code> / <code>phot_{survey}_flux_err_mjy</code> (survey =
+  <code>GALEX_FUV</code>, <code>GALEX_NUV</code>, <code>Legacy_g/r/z</code>, <code>WISE_W1/W2</code>) → fotometría total
+  de banda ancha, con piso de error del 10% sumado en cuadratura.</li>
+<li><code>line_{Halpha,Hbeta,OIII5007,NII6584}_flux_scaled</code> /
+  <code>..._flux_err_scaled</code> → líneas de emisión, en unidades de 1e-17 erg/s/cm²
+  (igual que el propio espectro), convertidas a W/m² (factor <code>1e-20</code>) para
+  el formato que CIGALE espera en <code>line.*</code>.</li>
+</ul>
+<h3>4.2 Qué hace con <code>desi_{tid}.npz</code></h3>
+<ul>
+<li>Método <strong>filtros</strong>: integra el espectro contra los 10 filtros CHANCES
+  (vía <code>xpectrafit.filters.integrate_filters</code>), corrige de apertura-fibra a
+  apertura-total con <code>spec_normalization.py</code> (ajustado contra
+  Legacy g/r/z), agrega piso de error del 10%.</li>
+<li>Método <strong>espectro nativo</strong>: convierte el <code>.npz</code> a FITS prism (ver §3.1) y
+  arma la fila con <code>spectrum</code>/<code>mode</code>/<code>norm</code>.</li>
+</ul>
+<h3>4.3 Uso</h3>
+<pre><code class="language-bash">conda activate cigale
+cd /home/polo/Escritorio/PHD/CHANCES/MKW8_full_run     # o el RUN_DIR que corresponda
+python /home/polo/Escritorio/PHD/code/photextra_pipeline/scripts/build_cigale_input.py &lt;N&gt; [out_root]
+</code></pre>
+<ul>
+<li><code>&lt;N&gt;</code>: cuántos targets tomar (los primeros N que tengan <strong>ambos</strong>
+  productos completos — fotometría y espectroscopía).</li>
+<li><code>[out_root]</code>: directorio de salida (default: el mismo <code>RUN_DIR</code>).</li>
+</ul>
+<p>Escribe:</p>
+<pre><code>{out_root}/cigale_N{N}_filters/cigale_input.txt   # método filtros+broadband+líneas
+{out_root}/cigale_N{N}_spectro/cigale_input.txt   # método espectro nativo
+{out_root}/cigale_N{N}_spectro/desi_spec_{tid}.fits   # un FITS por target
+</code></pre>
+<p><strong>Faltan a mano</strong> (no los genera el script, copiarlos de una corrida piloto
+previa o rehacerlos con §3.2/§2):</p>
+<ul>
+<li><code>pcigale.ini</code> (uno por método — copiar de una corrida piloto y ajustar
+  <code>data_file</code>)</li>
+<li><code>desi_disp.txt</code> (solo para el método espectro nativo)</li>
+</ul>
+<p>Ejemplo mínimo de flujo completo:</p>
+<pre><code class="language-bash">conda activate cigale
+cd /home/polo/Escritorio/PHD/CHANCES/MKW8_full_run
+
+# 1. armar los data_file para 50 targets
+python .../scripts/build_cigale_input.py 50
+
+# 2. copiar configs base ya validadas
+cp cigale_pilot_3targets_v2_lines/pcigale.ini{,.spec}      cigale_N50_filters/
+cp cigale_pilot_3targets_desi_spectro/pcigale.ini{,.spec}  cigale_N50_spectro/
+cp cigale_pilot_3targets_desi_spectro/desi_disp.txt        cigale_N50_spectro/
+
+# 3. correr
+cd cigale_N50_spectro &amp;&amp; pcigale run
+</code></pre>
+<hr />
+<h2>5. Filtros → carpeta lista para reusar</h2>
+<p>Todo lo necesario para levantar los filtros en una instalación nueva de
+CIGALE está en <code>filters/</code> junto a este documento:</p>
+<pre><code>filters/
+├── chances_continuum_filters.csv   # tabla fuente (10 tophats CHANCES)
+├── M3992.dat ... O8550.dat         # los 10 .dat ya generados (chances.*)
+└── DECam_g.dat, DECam_r.dat, DECam_z.dat   # curvas reales (chances_legacy.*)
+</code></pre>
+<p>Para registrarlos en una instalación nueva:</p>
+<pre><code class="language-bash">conda activate cigale
+pcigale-filters add filters/M3992.dat filters/M4542.dat filters/M5200.dat \
+  filters/M5600.dat filters/N6097.dat filters/N6350.dat filters/N6908.dat \
+  filters/O7473.dat filters/O8000.dat filters/O8550.dat \
+  filters/DECam_g.dat filters/DECam_r.dat filters/DECam_z.dat
+</code></pre>
+<hr />
+<h2>6. Resumen de resultados de la comparación de métodos (446 targets MKW8)</h2>
+<ul>
+<li><strong>Espectro nativo</strong> ajusta mejor en general (chi2_red mediano 2.05 vs 3.45
+  del método filtros), menos catastróficos (3.8% vs 21.3% con chi2&gt;10).</li>
+<li>Acuerdo de masa estelar entre métodos: excelente (offset mediano −0.06 dex,
+  dispersión 0.21 dex).</li>
+<li>Tiempo: filtros ~10.6s / espectro ~35s para 446 targets con la grilla SFH
+  original (<code>sfhdelayed</code>, 17280 modelos/z) — trivial en ambos casos.</li>
+<li><strong>Ojo con <code>sfhdelayedbq</code></strong> (SFH delayed+quench, para grillas con
+  <code>age_bq</code>/<code>r_sfr</code>): el costo de <code>bc03.convolve()</code> escala con el largo del
+  arreglo de edad (<code>age_main</code>, resolución fija de 1 Myr). Si <code>age_main</code> se
+  concentra en edades viejas (11000-13000 Myr) para <strong>todos</strong> los combos, el
+  costo por modelo se dispara ~20-25× vs una grilla log-espaciada de edades.
+  Recortar <code>r_sfr</code>/<code>age_bq</code> a subconjuntos chicos si se necesita este módulo.</li>
+</ul></body></html>

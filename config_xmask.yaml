@@ -1,0 +1,83 @@
+# =============================================================================
+# photextra_pipeline configuration
+# =============================================================================
+# Every knob of the pipeline lives here, so you never need to touch Python.
+# Values passed explicitly to Pipeline(...) in a script override this file.
+
+# --- what to run -------------------------------------------------------------
+# photometry   : imaging pipeline only (download, deblend, fluxes, SED)
+# spectroscopy : XpectraFit spectral fit only (needs redshift; the DESI/SDSS
+#                spectrum is found automatically from RA/Dec if not provided)
+# both         : photometry + spectroscopy, combined into one product per galaxy
+mode: photometry
+
+# --- how photometry+spectroscopy are combined (only used when mode: both) ----
+# own    : the built-in combination (spectrum normalized to the imaging
+#          photometry with the wavelength-dependent aperture correction)
+# cigale : ALSO run a CIGALE SED fit using the full DESI spectrum
+#          (use_spectro=True, the validated native-spectroscopy method) and
+#          append cigale_* columns (stellar mass, SFR, chi2, ...) to the
+#          combined table. Requires the "cigale" conda environment.
+both_method: own
+
+photometry:
+  # How the flux aperture is defined for each galaxy:
+  # mask          : xdebpair pixel masks per component (default; best for
+  #                 merging pairs — each galaxy gets its own mask)
+  # aperture      : one fixed circular aperture at the target position
+  #                 (simple, no deblending; radius set below)
+  # sep_apertures : one elliptical aperture from a SEP source detection
+  #                 (a, b, theta of the galaxy; Kron-like, no masks/xdebpair)
+  aperture_mode: mask
+
+  # Only used with aperture_mode: mask. What to do when xdebpair splits the
+  # target into two components (see the optional "type" column of the target
+  # CSV: merger / pre_merger / post_merger / no-merger; anything else counts as "other"):
+  # pair    : keep the components separate, but TRUST the classification:
+  #           merger/pre_merger -> 2 components; post_merger or other ->
+  #           forced to 1 galaxy (union of the masks). If the CSV has no
+  #           "type" column at all, xdebpair's own decision stands.
+  # central : measure ONLY the central galaxy (gal1). A detected companion's
+  #           flux is discarded and flagged (has_companion_not_measured).
+  # total   : ONE integrated measurement of the whole system (union of all
+  #           masks) — companion light included, no per-galaxy detail.
+  separation: pair
+
+  # Circular aperture radius in arcsec (only for aperture_mode: aperture)
+  aperture_radius_arcsec: 5.0
+
+spectroscopy:
+  # Fit an AGN component in XpectraFit (recommended: true)
+  fit_agn: true
+  # Instrumental FWHM of the spectrum in Angstrom (SDSS/DESI ~ 2.5)
+  spectrum_fwhm: 2.5
+  # Survey families for synthetic photometry computed from the spectrum
+  survey_filters: [Legacy, SDSS]
+
+# Try xdebpair for source separation (falls back to xmask, then to a simple
+# circular stub, if unavailable)
+use_xdebpair: true
+
+# --- imaging bands to download and measure ----------------------------------
+surveys:
+  - GALEX_FUV
+  - GALEX_NUV
+  - Legacy_g
+  - Legacy_r
+  - Legacy_z
+  - WISE_W1
+  - WISE_W2
+  - WISE_W3
+  - WISE_W4
+
+# Cutout size in arcmin (width of the downloaded images)
+download_size: 1
+
+# Common analysis grid all bands are reprojected onto (WISE W4 grid)
+common_grid:
+  reference: WISE_W4
+  pixscale: 1.375         # arcsec/pix
+  size: 45                # pixels
+
+# Where all per-target products/plots are written
+output_dir: /home/polo/Escritorio/PHD/code/photextra_pipeline/test_output

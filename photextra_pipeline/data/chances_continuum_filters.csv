@@ -1,0 +1,12 @@
+name,lambda_min,lambda_max,enabled,notes
+M3992,3750,4230,1,4000A break blue continuum; low telluric risk
+M4542,4440,4650,1,continuum window avoiding Hbeta/OIII; low telluric risk
+M5200,5100,5450,1,split of original M5446; covers Mgb blue side
+M5600,5450,5800,1,split of original M5446; Mgb/Fe continuum red side
+N6097,6000,6200,1,continuum before NaD; no strong lines; low telluric risk
+N6350,6200,6480,1,new filler before Halpha complex; avoids Halpha/NII/SII
+N6908,6900,7020,1,narrowed from 6800-7020 to avoid O2-B telluric (~6860-6890A)
+O7473,7200,7580,1,narrowed from 7200-7700 to avoid O2-A telluric (~7590-7650A)
+O8000,7810,8090,1,split of original O8281; avoids H2O moderate telluric (~8100-8350A)
+O8550,8390,8800,1,split of original O8281; covers CaII triplet (real stellar absorption, not telluric)
+O9265,9100,9230,0,narrowed from 9100-9450; still telluric-risky (H2O strong ~8900-9700A); disabled by default, enable per-target after QC

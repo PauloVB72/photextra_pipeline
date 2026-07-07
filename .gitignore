@@ -1,0 +1,23 @@
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+.pytest_cache/
+.venv/
+build/
+dist/
+
+# Generated pipeline outputs (large, reproducible from code + cached inputs)
+test_output/
+test_output_*/
+graphify-out/
+explore_aperture_multi/
+desi_spectra/
+
+# Large cached data products (FITS, npz spectra, downloaded cutouts)
+*.fits
+*.npz
+
+# OS / editor cruft
+.DS_Store
+*.swp

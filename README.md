@@ -1,55 +1,57 @@
 # photextra_pipeline
 
-Pipeline de fotometría multibanda + espectroscopía para galaxias en fusión
-(cúmulos CHANCES). Descarga cutouts (GALEX/Legacy/WISE), separa componentes
-en pares/sistemas en fusión (xdebpair), mide fotometría por componente o del
-sistema total, ajusta espectros DESI/SDSS (continuo estelar + líneas de
-emisión vía XpectraFit), y combina fotometría+espectroscopía en un solo SED
-por target — con CIGALE (ajuste espectroscópico nativo) o con el método
-propio de normalización de apertura.
+A multiband photometry and spectroscopy pipeline for merger and non-merger galaxies. It downloads image cutouts (GALEX/Legacy/WISE), separates individual components in interacting systems (via xdebpair), measures photometry for each component or for the entire system, fits DESI/SDSS spectra (stellar continuum + emission lines using XpectraFit), and combines photometric and spectroscopic data into a single SED for each target using either CIGALE (native spectroscopic fitting) or our proprietary aperture normalization method.
 
-```
+```text
 photextra
 ```
 
-corre el pipeline con un banner de bienvenida, resumen de la corrida y barra
-de progreso en la terminal.
+Runs the pipeline with a welcome banner, execution summary, and a terminal
+progress bar.
 
-## Instalación
+## Installation
 
 ```bash
-git clone <este repo>
+git clone <this repository>
 cd photextra_pipeline
 pip install -e .
 ```
 
-Dependencias: `numpy`, `scipy`, `astropy`, `matplotlib`, `pyyaml`, `sep`,
+Required dependencies:
+
+`numpy`, `scipy`, `astropy`, `matplotlib`, `pyyaml`, `sep`,
 `reproject`, `astroquery`, `photutils`, `rich`.
 
-Además, dos paquetes hermanos (no en PyPI, deben estar clonados aparte y
-accesibles vía `sys.path`/`pip install -e`):
+Additionally, two companion packages (not available on PyPI) must be cloned
+separately and installed (or made available through `sys.path`):
 
-- [`xdebpair`](../xdebpair) — separación de fuentes en pares en fusión.
-- [`xpectrafit`](../xpectrafit) — ajuste espectral (pPXF + E-MILES, AGN,
-  líneas de emisión, BPT/WHAN).
+- [`xdebpair`](../xdebpair) — source separation for interacting galaxy pairs.
+- [`xpectrafit`](../xpectrafit) — spectral fitting (pPXF + E-MILES, AGN,
+  emission lines, BPT/WHAN classification).
 
-Para el modo `both_method: cigale` (ajuste SED con CIGALE usando el espectro
-completo, no solo fotometría de banda ancha) hace falta además el entorno
-`cigale` con el fork `cigale_spec` — ver
-[`docs/cigale_tutorial/TUTORIAL.pdf`](docs/cigale_tutorial/TUTORIAL.pdf) para
-la instalación completa, cómo se registran los filtros propios (CHANCES
-continuum + DECam/Legacy reales) y cómo se conecta con este pipeline.
+For `both_method: cigale` (SED fitting with CIGALE using the full spectrum,
+rather than broadband photometry only), a dedicated `cigale` environment with
+the `cigale_spec` fork is also required. See
+[`docs/cigale_tutorial/TUTORIAL.pdf`](docs/cigale_tutorial/TUTORIAL.pdf) for
+complete installation instructions, registration of custom filters (CHANCES
+continuum + real DECam/Legacy filters), and integration with this pipeline.
 
-## Uso rápido (CLI)
+## Quick Start (CLI)
 
 ```bash
-photextra config_xmask.yaml --targets mis_targets.csv --limit 5
+photextra config_xmask.yaml --targets my_targets.csv --limit 5
 ```
 
-`mis_targets.csv` necesita columnas `ID,RA,DEC,REDSHIFT` (columna opcional
-`type` con `merger`/`pre_merger`/`post_merger` — ver `separation` abajo).
+`my_targets.csv` must contain the columns:
 
-## Uso como librería
+```
+ID,RA,DEC,REDSHIFT
+```
+
+An optional `type` column may also be included (`merger`,
+`pre_merger`, or `post_merger`)—see the `separation` section below.
+
+## Using as a Python Library
 
 ```python
 from photextra_pipeline import Pipeline
@@ -58,14 +60,14 @@ pipe = Pipeline(config="config_xmask.yaml", mode="both")
 pipe.run({"id": "12345", "ra": 180.1, "dec": 12.3, "z": 0.03})
 ```
 
-## Configuración (`config_xmask.yaml`)
+## Configuration (`config_xmask.yaml`)
 
 ```yaml
 mode: photometry            # photometry | spectroscopy | both
-both_method: own            # own | cigale (solo aplica con mode: both)
+both_method: own            # own | cigale (only applies when mode: both)
 
 photometry:
-  aperture_mode: mask       # mask (xdebpair) | aperture (circular) | sep_apertures (elipses SEP)
+  aperture_mode: mask       # mask (xdebpair) | aperture (circular) | sep_apertures (SEP ellipses)
   separation: pair          # central | total | pair
   aperture_radius_arcsec: 5.0
 
@@ -81,71 +83,97 @@ common_grid: {reference: WISE_W4, pixscale: 1.375, size: 45}
 output_dir: ./test_output
 ```
 
-Los kwargs explícitos al construir `Pipeline(...)` (`mode=`, `use_xdebpair=`,
-`both_method=`) pisan lo que diga el YAML — así los scripts existentes
-(`run_mkw8_full.py`, etc.) siguen funcionando sin cambios.
+Explicit keyword arguments passed when creating `Pipeline(...)` (such as
+`mode=`, `use_xdebpair=`, or `both_method=`) override the values defined in
+the YAML configuration. This ensures that existing scripts (e.g.,
+`run_mkw8_full.py`) continue to work without modification.
 
 ### `photometry.aperture_mode`
 
-- **`mask`** (default): separación por componente con `xdebpair` (fallback a
-  `xmask` si no está disponible, y a un stub interno de un solo componente si
-  tampoco).
-- **`aperture`**: apertura circular simple.
-- **`sep_apertures`**: elipses de Kron a partir de la detección de fuentes de
-  `SEP` (sin `xdebpair`, alternativa rápida sin máscaras).
+- **`mask`** (default): component separation using `xdebpair`, with automatic
+  fallback to `xmask` if available, and finally to an internal single-component
+  stub if neither package is installed.
+
+- **`aperture`**: simple circular aperture photometry.
+
+- **`sep_apertures`**: Kron elliptical apertures derived from source detection
+  with `SEP`. This mode does not require `xdebpair` and provides a fast
+  alternative without segmentation masks.
 
 ### `photometry.separation`
 
-Solo aplica con `aperture_mode: mask`. Siempre corre `xdebpair` primero;
-después, según el valor:
+This option only applies when `aperture_mode: mask` is selected.
 
-- **`pair`**: separa por componente, pero la clasificación manda si existe
-  una columna `type` en el CSV de targets — `merger`/`pre_merger` → separa;
-  `post_merger`/otro → fuerza a 1 componente aunque `xdebpair` haya detectado
-  2. Sin columna `type` → se respeta la decisión cruda de `xdebpair`.
-- **`central`**: siempre 1 componente (la galaxia principal); si había una
-  compañera, se descarta su flujo pero queda un flag
-  `has_companion_not_measured=True` + warning en el log.
-- **`total`**: une todos los componentes detectados en una sola apertura
-  (flujo total del sistema, sin descomponer).
+`xdebpair` is always executed first. Afterwards, the final behavior depends on
+the selected mode:
+
+- **`pair`**: measures each component separately. If the target catalog
+  contains a `type` column, it controls the final decision:
+  - `merger` or `pre_merger` → keep separate components.
+  - `post_merger` (or any other value) → force a single component, even if
+    `xdebpair` detected two.
+  - If no `type` column exists, the raw `xdebpair` classification is used.
+
+- **`central`**: always measures only the primary galaxy. If a companion is
+  detected, its flux is ignored, while the output includes the flag
+  `has_companion_not_measured=True` together with a warning in the execution
+  log.
+
+- **`total`**: merges all detected components into a single aperture,
+  measuring the total flux of the system without decomposition.
 
 ### `both_method`
 
-- **`own`** (default): normalización propia (apertura total vs fibra,
-  ponderada por S/N² sobre bandas Legacy, extensión de Zou et al. 2024).
-- **`cigale`**: corre CIGALE con el espectro completo (`use_spectro=True`) en
-  vez del ajuste propio — ver el tutorial de CIGALE para la instalación.
+- **`own`** (default): proprietary aperture normalization method that scales
+  fiber spectroscopy to total photometry using an S/N²-weighted combination of
+  Legacy bands, extending the methodology of Zou et al. (2024).
 
-## Líneas de emisión (espectroscopía)
+- **`cigale`**: runs CIGALE using the complete observed spectrum
+  (`use_spectro=True`) instead of the internal normalization method. See the
+  CIGALE tutorial for installation details.
 
-`spectral_fit.py` extrae, por línea, `flux`, `flux_err`, `ew` (ancho
-equivalente), `ew_err`, `sigma` (dispersión de velocidad, km/s), `v_kms`
-(corrimiento) y `snr` — para las 22 líneas angostas + 6 líneas anchas (AGN)
-que XpectraFit soporta (antes solo se extraían 4 líneas con flux nada más).
-XpectraFit salta el ajuste de líneas para espectros muy quiescentes
-(EW(Hα)<3Å) a propósito — no es un bug, es una heurística de velocidad.
+## Emission-Line Measurements (Spectroscopy)
 
-## Estructura del repo
+`spectral_fit.py` extracts the following parameters for each emission line:
 
-```
-photextra_pipeline/       # paquete principal
-  pipeline.py              # orquestación (Pipeline.run)
-  downloader.py            # descarga de cutouts (GALEX/Legacy/WISE)
-  deblending.py            # adaptador xdebpair
-  deblend_photometry.py    # fotometría por componente / xmask fallback
-  photometry.py            # medición de flujos (máscara/apertura/sep)
-  convolution.py            # PSF matching entre bandas
-  reprojection.py          # WCS común + reproyección
-  spectrum_acquisition.py  # descarga/cacheo de espectros DESI/SDSS
-  spectral_fit.py          # ajuste espectral (XpectraFit) + líneas
-  spec_normalization.py    # normalización apertura fibra->total
-  cigale_integration.py    # puente hacia CIGALE (both_method: cigale)
-  output_table.py          # tabla de salida final
-  validation_plots.py      # plots de diagnóstico
-  cli.py                    # comando `photextra`
-scripts/                   # utilidades CIGALE (filtros, conversión DESI->FITS)
-docs/cigale_tutorial/      # instalación CIGALE + filtros + PDF
-test_*.py                  # tests (pytest)
+- `flux`
+- `flux_err`
+- `ew` (equivalent width)
+- `ew_err`
+- `sigma` (velocity dispersion, km s⁻¹)
+- `v_kms` (velocity shift)
+- `snr`
+
+These quantities are measured for all 22 narrow emission lines and the 6 broad
+AGN lines supported by XpectraFit. Previous versions extracted only fluxes for
+four emission lines.
+
+For very quiescent spectra (EW(Hα) < 3 Å), XpectraFit intentionally skips
+emission-line fitting to reduce unnecessary computation. This behavior is a
+built-in optimization rather than a software bug.
+
+## Repository Structure
+
+```text
+photextra_pipeline/       # main package
+  pipeline.py              # pipeline orchestration (Pipeline.run)
+  downloader.py            # cutout download (GALEX/Legacy/WISE)
+  deblending.py            # xdebpair interface
+  deblend_photometry.py    # component photometry / xmask fallback
+  photometry.py            # flux measurements (mask/aperture/SEP)
+  convolution.py           # PSF matching across surveys
+  reprojection.py          # common WCS grid + reprojection
+  spectrum_acquisition.py  # DESI/SDSS spectrum download and caching
+  spectral_fit.py          # spectral fitting (XpectraFit) + emission lines
+  spec_normalization.py    # fiber-to-total flux normalization
+  cigale_integration.py    # interface to CIGALE (both_method: cigale)
+  output_table.py          # final output catalog
+  validation_plots.py      # diagnostic plots
+  cli.py                   # `photextra` command-line interface
+
+scripts/                   # CIGALE utilities (filters, DESI→FITS conversion)
+docs/cigale_tutorial/      # CIGALE installation, filters, tutorial PDF
+test_*.py                  # pytest test suite
 ```
 
 ## Tests
@@ -154,7 +182,13 @@ test_*.py                  # tests (pytest)
 python -m pytest test_new_features.py -q
 ```
 
-23 tests (fotometría en los 3 `aperture_mode`, `separation` × clasificación,
-bug de máscaras, alineación WCS entre surveys, extracción de líneas
-espectrales con espectros reales cacheados, smoke test de `both_method:
-cigale`) — todos verdes.
+The test suite currently contains **23 tests**, covering:
+
+- all three photometry `aperture_mode` options;
+- every combination of `separation` mode and galaxy classification;
+- mask-related regression tests;
+- WCS alignment across different surveys;
+- emission-line extraction using cached real spectra;
+- smoke tests for `both_method: cigale`.
+
+All tests currently pass.

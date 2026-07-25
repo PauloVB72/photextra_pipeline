@@ -28,7 +28,7 @@ CFG = {
     "download_size": 1.5,
 }
 
-pipe = Pipeline(CFG, use_xdebpair=True)
+pipe = Pipeline(CFG, deblend=True)
 
 t0_all = time.perf_counter()
 timings = {}

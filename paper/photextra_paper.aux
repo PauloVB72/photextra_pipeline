@@ -1,0 +1,146 @@
+\relax 
+\providecommand\hyper@newdestlabel[2]{}
+\providecommand\HyperFirstAtBeginDocument{\AtBeginDocument}
+\HyperFirstAtBeginDocument{\ifx\hyper@anchor\@undefined
+\global\let\oldnewlabel\newlabel
+\gdef\newlabel#1#2{\newlabelxx{#1}#2}
+\gdef\newlabelxx#1#2#3#4#5#6{\oldnewlabel{#1}{{#2}{#3}}}
+\AtEndDocument{\ifx\hyper@anchor\@undefined
+\let\newlabel\oldnewlabel
+\fi}
+\fi}
+\global\let\hyper@last\relax 
+\gdef\HyperFirstAtBeginDocument#1{#1}
+\providecommand\HyField@AuxAddToFields[1]{}
+\providecommand\HyField@AuxAddToCoFields[2]{}
+\citation{boquien2019,zou2024}
+\citation{dey2019}
+\citation{martin2005}
+\citation{wright2010}
+\citation{desi2024,york2000}
+\citation{zou2024}
+\citation{bertin1996,barbary2016}
+\citation{boquien2019}
+\citation{cappellari2017}
+\citation{sifon2025}
+\@writefile{toc}{\contentsline {section}{\numberline {1}Introduction}{1}{section.1}\protected@file@percent }
+\newlabel{sec:intro}{{1}{1}{Introduction}{section.1}{}}
+\citation{dey2019}
+\citation{mcglynn1998}
+\citation{ginsburg2019}
+\citation{york2000}
+\citation{chambers2016}
+\citation{skrutskie2006}
+\citation{jarrett2011}
+\citation{juneau2024}
+\@writefile{toc}{\contentsline {section}{\numberline {2}Input data}{2}{section.2}\protected@file@percent }
+\newlabel{sec:data}{{2}{2}{Input data}{section.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.1}Imaging}{2}{subsection.2.1}\protected@file@percent }
+\newlabel{sec:data_imaging}{{2.1}{2}{Imaging}{subsection.2.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.2}Coverage checking and non-blind bulk imaging}{2}{subsection.2.2}\protected@file@percent }
+\newlabel{sec:coverage}{{2.2}{2}{Coverage checking and non-blind bulk imaging}{subsection.2.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.3}Spectroscopy}{2}{subsection.2.3}\protected@file@percent }
+\newlabel{sec:data_spectra}{{2.3}{2}{Spectroscopy}{subsection.2.3}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {1}{\ignorespaces Imaging bands supported by \texttt  {photextra\_pipeline}\ and their adopted properties (the \texttt  {SURVEY\_DEFAULTS} registry).}}{3}{table.1}\protected@file@percent }
+\newlabel{tab:surveys}{{1}{3}{Imaging bands supported by \photextra \ and their adopted properties (the \texttt {SURVEY\_DEFAULTS} registry)}{table.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {2.4}Target input}{3}{subsection.2.4}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {3}Architecture and operation modes}{3}{section.3}\protected@file@percent }
+\newlabel{sec:architecture}{{3}{3}{Architecture and operation modes}{section.3}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {1}{\ignorespaces Architecture of \texttt  {photextra\_pipeline}. Blue boxes belong to the \texttt  {photometry} mode, red boxes to the \texttt  {spectroscopy} mode; \texttt  {both} runs the two branches and the green combination step. Every stage is checkpointed: cached products are reused and only missing pieces are recomputed.}}{3}{figure.1}\protected@file@percent }
+\newlabel{fig:flowchart}{{1}{3}{Architecture of \photextra . Blue boxes belong to the \texttt {photometry} mode, red boxes to the \texttt {spectroscopy} mode; \texttt {both} runs the two branches and the green combination step. Every stage is checkpointed: cached products are reused and only missing pieces are recomputed}{figure.1}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {4}Photometric pipeline}{3}{section.4}\protected@file@percent }
+\newlabel{sec:photometry}{{4}{3}{Photometric pipeline}{section.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.1}Source separation with \texttt  {xdebpair}}{3}{subsection.4.1}\protected@file@percent }
+\newlabel{sec:deblending}{{4.1}{3}{Source separation with \xdebpair }{subsection.4.1}{}}
+\@writefile{lot}{\contentsline {table}{\numberline {2}{\ignorespaces Main configuration options of \texttt  {photextra\_pipeline}\ (YAML schema of \texttt  {config\_xmask.yaml}).}}{4}{table.2}\protected@file@percent }
+\newlabel{tab:config}{{2}{4}{Main configuration options of \photextra \ (YAML schema of \texttt {config\_xmask.yaml})}{table.2}{}}
+\@writefile{lof}{\contentsline {figure}{\numberline {2}{\ignorespaces \texttt  {xdebpair}\ source separation on Legacy Survey $r$-band cutouts for the three classification outcomes of the controlled test set (Sect.\nobreakspace  {}\ref {sec:mergers}): a single galaxy (left), a resolved pair of companions at $\Delta \theta = 9.8\ensuremath  {^{\prime \prime }}$ (centre), and an ongoing merger at $\Delta \theta = 2.6\ensuremath  {^{\prime \prime }}$ (right). Contours show the per-component pixel masks (red: component 1; blue: component 2); crosses mark the detected nuclei. Each panel is $22\ensuremath  {^{\prime \prime }}$ wide.}}{4}{figure.2}\protected@file@percent }
+\newlabel{fig:deblend}{{2}{4}{\xdebpair \ source separation on Legacy Survey $r$-band cutouts for the three classification outcomes of the controlled test set (Sect.~\ref {sec:mergers}): a single galaxy (left), a resolved pair of companions at $\Delta \theta = 9.8\arcsecond $ (centre), and an ongoing merger at $\Delta \theta = 2.6\arcsecond $ (right). Contours show the per-component pixel masks (red: component 1; blue: component 2); crosses mark the detected nuclei. Each panel is $22\arcsecond $ wide}{figure.2}{}}
+\@writefile{toc}{\contentsline {subsubsection}{\numberline {4.1.1}Separation policy and blending flag}{4}{subsubsection.4.1.1}\protected@file@percent }
+\newlabel{sec:separation_policy}{{4.1.1}{4}{Separation policy and blending flag}{subsubsection.4.1.1}{}}
+\newlabel{eq:blendflag}{{1}{4}{Separation policy and blending flag}{equation.4.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.2}PSF homogenisation and reprojection}{4}{subsection.4.2}\protected@file@percent }
+\newlabel{sec:psf}{{4.2}{4}{PSF homogenisation and reprojection}{subsection.4.2}{}}
+\citation{barbary2016}
+\citation{dey2019,lang2014}
+\citation{cappellari2017}
+\citation{vazdekis2016}
+\citation{greene2005}
+\citation{baldwin1981,kewley2001,kauffmann2003}
+\citation{cidfernandes2011}
+\citation{balogh1999}
+\citation{zou2024}
+\citation{zou2024}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.3}Flux measurement and calibration}{5}{subsection.4.3}\protected@file@percent }
+\newlabel{sec:calib}{{4.3}{5}{Flux measurement and calibration}{subsection.4.3}{}}
+\newlabel{eq:counts}{{2}{5}{Flux measurement and calibration}{equation.4.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.4}Deblending of blended bands and forced photometry}{5}{subsection.4.4}\protected@file@percent }
+\newlabel{sec:deblend_phot}{{4.4}{5}{Deblending of blended bands and forced photometry}{subsection.4.4}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {4.5}Per-component SEDs}{5}{subsection.4.5}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {5}Spectroscopic pipeline}{5}{section.5}\protected@file@percent }
+\newlabel{sec:spectroscopy}{{5}{5}{Spectroscopic pipeline}{section.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {6}Combining photometry and spectroscopy}{5}{section.6}\protected@file@percent }
+\newlabel{sec:combination}{{6}{5}{Combining photometry and spectroscopy}{section.6}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.1}Aperture normalisation}{5}{subsection.6.1}\protected@file@percent }
+\newlabel{sec:norm}{{6.1}{5}{Aperture normalisation}{subsection.6.1}{}}
+\newlabel{eq:norm}{{3}{5}{Aperture normalisation}{equation.6.3}{}}
+\citation{zou2024}
+\citation{zou2024}
+\citation{boquien2019}
+\@writefile{lof}{\contentsline {figure}{\numberline {3}{\ignorespaces Per-component SEDs measured by \texttt  {photextra\_pipeline}\ for the three systems of Fig.\nobreakspace  {}\ref {fig:deblend} (from the pipeline's own photometry products). Yellow circles: total system; red squares / blue diamonds: deblended components. Black open circles mark bands with $\mathrm  {FWHM}_\mathrm  {PSF} \geq \Delta \theta $ (Eq.\nobreakspace  {}\ref {eq:blendflag}), where the per-component split relies on the deblending estimators of Sect.\nobreakspace  {}\ref {sec:deblend_phot}. Only positive fluxes are shown.}}{6}{figure.3}\protected@file@percent }
+\newlabel{fig:seds}{{3}{6}{Per-component SEDs measured by \photextra \ for the three systems of Fig.~\ref {fig:deblend} (from the pipeline's own photometry products). Yellow circles: total system; red squares / blue diamonds: deblended components. Black open circles mark bands with $\mathrm {FWHM}_\mathrm {PSF} \geq \Delta \theta $ (Eq.~\ref {eq:blendflag}), where the per-component split relies on the deblending estimators of Sect.~\ref {sec:deblend_phot}. Only positive fluxes are shown}{figure.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.2}Rescaled and invariant quantities}{6}{subsection.6.2}\protected@file@percent }
+\@writefile{lof}{\contentsline {figure}{\numberline {4}{\ignorespaces Photometry--spectroscopy combination (\texttt  {mode="both"}) for a representative MKW\nobreakspace  {}8 member (DESI targetid 2842593834565632, $z=0.0279$). The observed DESI fibre spectrum (grey) under-captures the total light measured by the imaging photometry (yellow circles) but matches the fibre-aperture imaging fluxes (green triangles). The fitted normalisation $s(\lambda )$ (here $\simeq 9.8$ at $\lambda _0$, anchored on the Legacy $g$, $r$, $z$ bands) rescales the spectrum (blue) and its synthetic photometry (open $\to $ filled red symbols) to the total-light scale.}}{6}{figure.4}\protected@file@percent }
+\newlabel{fig:combined}{{4}{6}{Photometry--spectroscopy combination (\texttt {mode="both"}) for a representative MKW~8 member (DESI targetid 2842593834565632, $z=0.0279$). The observed DESI fibre spectrum (grey) under-captures the total light measured by the imaging photometry (yellow circles) but matches the fibre-aperture imaging fluxes (green triangles). The fitted normalisation $s(\lambda )$ (here $\simeq 9.8$ at $\lambda _0$, anchored on the Legacy $g$, $r$, $z$ bands) rescales the spectrum (blue) and its synthetic photometry (open $\to $ filled red symbols) to the total-light scale}{figure.4}{}}
+\citation{jarrett2011}
+\citation{astropy2022}
+\citation{barbary2016}
+\citation{ginsburg2019}
+\citation{cappellari2017}
+\citation{juneau2024}
+\citation{boquien2019}
+\citation{zou2024}
+\@writefile{lot}{\contentsline {table}{\numberline {3}{\ignorespaces Controlled five-system test set (\texttt  {test\_output\_xdeb}).}}{7}{table.3}\protected@file@percent }
+\newlabel{tab:mergers}{{3}{7}{Controlled five-system test set (\texttt {test\_output\_xdeb})}{table.3}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {6.3}Optional CIGALE SED fitting}{7}{subsection.6.3}\protected@file@percent }
+\@writefile{toc}{\contentsline {section}{\numberline {7}Validation}{7}{section.7}\protected@file@percent }
+\newlabel{sec:validation}{{7}{7}{Validation}{section.7}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.1}Controlled close-pair test set}{7}{subsection.7.1}\protected@file@percent }
+\newlabel{sec:mergers}{{7.1}{7}{Controlled close-pair test set}{subsection.7.1}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.2}Production run: 450 members of MKW\nobreakspace  {}8}{7}{subsection.7.2}\protected@file@percent }
+\newlabel{sec:mkw8}{{7.2}{7}{Production run: 450 members of MKW~8}{subsection.7.2}{}}
+\@writefile{toc}{\contentsline {subsection}{\numberline {7.3}Quality assurance: the WISE zero-point case}{7}{subsection.7.3}\protected@file@percent }
+\newlabel{sec:qa}{{7.3}{7}{Quality assurance: the WISE zero-point case}{subsection.7.3}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {8}Code availability}{7}{section.8}\protected@file@percent }
+\newlabel{sec:availability}{{8}{7}{Code availability}{section.8}{}}
+\bibcite{astropy2022}{{1}{2022}{{Astropy Collaboration et al.}}{{}}}
+\bibcite{baldwin1981}{{2}{1981}{{Baldwin et al.}}{{}}}
+\bibcite{balogh1999}{{3}{1999}{{Balogh et al.}}{{}}}
+\bibcite{barbary2016}{{4}{2016}{{Barbary}}{{}}}
+\bibcite{bertin1996}{{5}{1996}{{Bertin \& Arnouts}}{{}}}
+\bibcite{boquien2019}{{6}{2019}{{Boquien et al.}}{{}}}
+\bibcite{cappellari2017}{{7}{2017}{{Cappellari}}{{}}}
+\bibcite{chambers2016}{{8}{2016}{{Chambers et al.}}{{}}}
+\bibcite{cidfernandes2011}{{9}{2011}{{Cid Fernandes et al.}}{{}}}
+\bibcite{desi2024}{{10}{2024}{{DESI Collaboration et al.}}{{}}}
+\bibcite{dey2019}{{11}{2019}{{Dey et al.}}{{}}}
+\bibcite{ginsburg2019}{{12}{2019}{{Ginsburg et al.}}{{}}}
+\bibcite{greene2005}{{13}{2005}{{Greene \& Ho}}{{}}}
+\bibcite{jarrett2011}{{14}{2011}{{Jarrett et al.}}{{}}}
+\bibcite{juneau2024}{{15}{2024}{{Juneau et al.}}{{}}}
+\bibcite{kauffmann2003}{{16}{2003}{{Kauffmann et al.}}{{}}}
+\bibcite{kewley2001}{{17}{2001}{{Kewley et al.}}{{}}}
+\bibcite{lang2014}{{18}{2014}{{Lang}}{{}}}
+\bibcite{martin2005}{{19}{2005}{{Martin et al.}}{{}}}
+\bibcite{mcglynn1998}{{20}{1998}{{McGlynn et al.}}{{}}}
+\bibcite{skrutskie2006}{{21}{2006}{{Skrutskie et al.}}{{}}}
+\bibcite{sifon2025}{{22}{2025}{{Sif\'on et al.}}{{}}}
+\bibcite{vazdekis2016}{{23}{2016}{{Vazdekis et al.}}{{}}}
+\bibcite{wright2010}{{24}{2010}{{Wright et al.}}{{}}}
+\bibcite{york2000}{{25}{2000}{{York et al.}}{{}}}
+\bibcite{zou2024}{{26}{2024}{{Zou et al.}}{{}}}
+\@writefile{lof}{\contentsline {figure}{\numberline {5}{\ignorespaces MKW\nobreakspace  {}8 production run (446 combined products). Left: distribution of the applied aperture correction $s(\lambda _0)$ (fibre to total light; median 6.4, dashed line). Right: WHAN emission-line classification of the sample as measured by \texttt  {XpectraFit}.}}{8}{figure.5}\protected@file@percent }
+\newlabel{fig:mkw8}{{5}{8}{MKW~8 production run (446 combined products). Left: distribution of the applied aperture correction $s(\lambda _0)$ (fibre to total light; median 6.4, dashed line). Right: WHAN emission-line classification of the sample as measured by \xpectrafit }{figure.5}{}}
+\@writefile{toc}{\contentsline {section}{\numberline {9}Summary}{8}{section.9}\protected@file@percent }
+\newlabel{sec:summary}{{9}{8}{Summary}{section.9}{}}
+\gdef \@abspage@last{8}

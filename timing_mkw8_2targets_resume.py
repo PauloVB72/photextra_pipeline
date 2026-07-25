@@ -82,7 +82,7 @@ for tid, mode in REMAINING:
            "download_s": None, "spec_acq_s": None,
            "spec_fit_s": None, "processing_s": None, "error": ""}
     try:
-        pipe = Pipeline(config=dict(cfg), use_xdebpair=True, mode=mode)
+        pipe = Pipeline(config=dict(cfg), deblend=True, mode=mode)
         t0 = time.perf_counter()
         pipe.run(dict(tgt))
         total = time.perf_counter() - t0

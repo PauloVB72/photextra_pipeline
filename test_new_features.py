@@ -40,7 +40,7 @@ BASE_CFG = {
 def _pipeline(**overrides):
     cfg = dict(BASE_CFG)
     cfg.update(overrides)
-    return Pipeline(config=cfg, use_xdebpair=False, mode="photometry")
+    return Pipeline(config=cfg, deblend=False, mode="photometry")
 
 
 def _fake_seg(n_components=2):
@@ -143,14 +143,14 @@ def test_aperture_mode_validation():
     cfg = dict(BASE_CFG)
     cfg["photometry"] = {"aperture_mode": "not_a_mode"}
     with pytest.raises(ValueError):
-        Pipeline(config=cfg, use_xdebpair=False)
+        Pipeline(config=cfg, deblend=False)
 
 
 def test_separation_validation():
     cfg = dict(BASE_CFG)
     cfg["photometry"] = {"separation": "not_a_value"}
     with pytest.raises(ValueError):
-        Pipeline(config=cfg, use_xdebpair=False)
+        Pipeline(config=cfg, deblend=False)
 
 
 def test_cigale_run_enables_cigale():
@@ -159,13 +159,13 @@ def test_cigale_run_enables_cigale():
     cfg = dict(BASE_CFG)
     cfg["mode"] = "both"
     cfg["cigale_run"] = True
-    pipe = Pipeline(config=cfg, use_xdebpair=False)
+    pipe = Pipeline(config=cfg, deblend=False)
     assert pipe.cigale_run is True
     assert pipe._cigale_enabled() is True
 
     cfg2 = dict(BASE_CFG)
     cfg2["mode"] = "both"
-    pipe2 = Pipeline(config=cfg2, use_xdebpair=False)
+    pipe2 = Pipeline(config=cfg2, deblend=False)
     assert pipe2.cigale_run is False
     assert pipe2._cigale_enabled() is False
 
@@ -175,7 +175,7 @@ def test_config_kwarg_override():
     (backward compat for run_mkw8_full.py / timing_*.py driver scripts)."""
     cfg = dict(BASE_CFG)
     cfg["mode"] = "photometry"
-    pipe = Pipeline(config=cfg, use_xdebpair=False, mode="both")
+    pipe = Pipeline(config=cfg, deblend=False, mode="both")
     assert pipe.mode == "both"
 
 

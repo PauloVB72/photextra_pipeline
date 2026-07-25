@@ -3,8 +3,8 @@
 Flow: download -> xdebpair (source separation) -> convolve to W4 PSF ->
 reproject to common grid -> reproject masks -> measure fluxes -> write outputs.
 
-xdebpair is tried first; falls back to xmask if unavailable, then to a
-built-in stub that produces a single circular component.
+xdebpair is the only real deblender; if it fails or is disabled the pipeline
+falls back to a built-in stub that produces a single circular component.
 
 The ``mode`` selector chooses which analysis runs:
 
@@ -49,16 +49,6 @@ from . import validation_plots as vp
 logger = logging.getLogger(__name__)
 
 
-def _load_xmask():
-    """Import real xmask or fall back to a built-in stub."""
-    try:
-        from xmask import XmaskPy
-        return XmaskPy, False
-    except Exception:
-        logger.warning("xmask not available; using built-in stub")
-        return _StubXmask, True
-
-
 def _xdebpair_available():
     """Check whether xdebpair can be imported."""
     try:
@@ -73,6 +63,14 @@ def _xdebpair_available():
 
 
 class _StubXmaskResult:
+    """Lightweight deblending-result container (masks + wcs + pair metadata).
+
+    Used by the trivial single-aperture fallback (_StubXmask) and reused as
+    the result object for the aperture/sep_apertures photometry modes. It is
+    independent of the retired external ``xmask`` package; the name is kept
+    for interface continuity.
+    """
+
     def __init__(self, masks, wcs, n_components, separation_arcsec):
         self.masks = masks
         self.wcs = wcs
@@ -107,7 +105,7 @@ VALID_SEPARATIONS = ("central", "total", "pair")
 
 
 class Pipeline:
-    def __init__(self, config="config_xmask.yaml", use_xdebpair=None,
+    def __init__(self, config="config_xmask.yaml", deblend=None,
                  mode=None):
         """
         Parameters
@@ -119,9 +117,13 @@ class Pipeline:
             arguments below OVERRIDE the config value when passed
             explicitly (backward compatibility with existing driver
             scripts).
-        use_xdebpair : bool, optional
-            Try xdebpair for source separation before xmask/stub.
-            Default: config key ``use_xdebpair`` (true).
+        deblend : bool, optional
+            True (default): attempt xdebpair source separation, falling
+            back to the trivial single-circular-aperture stub if xdebpair
+            fails or is not importable. False: skip xdebpair entirely and
+            always use the stub (fast/cheap runs where deblending is not
+            needed). Default: config key ``deblend`` (true; the legacy
+            key ``use_xdebpair`` is still honoured).
         mode : {"photometry", "spectroscopy", "both"}, optional
             Which analysis :meth:`run` performs. ``"photometry"`` runs only
             the photometric pipeline; ``"spectroscopy"`` runs only the
@@ -198,11 +200,11 @@ class Pipeline:
         # These knobs feed photextra's OWN detect_sep_ellipse /
         # measure_sep_elliptical_photometry (the sep_apertures path); the
         # defaults reproduce the previously-hardcoded literals so behaviour is
-        # unchanged unless the user edits the config. NOTE: xmask's internal
-        # SEP parameters (thresh/minarea/deblend_nthresh/deblend_cont in
-        # xmask.deblend) are NOT independently tunable yet — the public xmask
-        # API (XmaskPy) does not accept them as kwargs, so this sep: section
-        # does not reach the xmask mask builder used by aperture_mode="mask".
+        # unchanged unless the user edits the config. NOTE: xdebpair's
+        # internal SEP parameters (thresh/minarea/deblend_nthresh/
+        # deblend_cont in xdebpair.sep_segment) are NOT independently tunable
+        # from here — this sep: section does not reach the xdebpair mask
+        # builder used by aperture_mode="mask".
         sep_cfg = self.config.get("sep") or {}
         self.sep_thresh_sigma = float(sep_cfg.get("thresh_sigma", 1.5))
         self.sep_ellipse_k = float(sep_cfg.get("ellipse_k", 2.5))
@@ -226,13 +228,13 @@ class Pipeline:
         self.survey_filters = spec_cfg.get(
             "survey_filters", self.config.get("survey_filters",
                                               ["Legacy", "SDSS"]))
-        self._XmaskPy, self._xmask_is_stub = _load_xmask()
-        want_xdeb = use_xdebpair if use_xdebpair is not None else \
-            bool(self.config.get("use_xdebpair", True))
-        self.use_xdebpair = want_xdeb and _xdebpair_available()
-        if want_xdeb and not self.use_xdebpair:
-            logger.warning("xdebpair requested but not importable; "
-                           "falling back to xmask/stub")
+        want_deblend = deblend if deblend is not None else \
+            bool(self.config.get("deblend",
+                                 self.config.get("use_xdebpair", True)))
+        self.deblend = want_deblend and _xdebpair_available()
+        if want_deblend and not self.deblend:
+            logger.warning("deblend=True but xdebpair not importable; "
+                           "falling back to the single-aperture stub")
 
     def run(self, target):
         """Run the analysis selected by ``self.mode`` on one target dict."""
@@ -331,7 +333,7 @@ class Pipeline:
         shape = (self.grid_size, self.grid_size)
 
         if self.aperture_mode == "mask":
-            # Source separation: xdebpair > xmask > stub, then the
+            # Source separation: xdebpair > stub, then the
             # classification-aware separation policy (central/total/pair)
             seg_result = self._run_deblending(ra, dec, images)
             seg_result = self._apply_separation_policy(seg_result, target)
@@ -632,7 +634,7 @@ class Pipeline:
     def _check_download_failures(self, target_id, images):
         """Refuse to silently degrade science when downloads failed.
 
-        If the Legacy optical imaging that drives xdebpair/xmask deblending
+        If the Legacy optical imaging that drives xdebpair deblending
         failed to DOWNLOAD (rate limit, network — i.e. an "error" entry from
         the downloader, avoidable by re-running), the deblending would fall
         through to the synthetic circular stub mask and produce a fake
@@ -1241,24 +1243,18 @@ class Pipeline:
         return results
 
     def _run_deblending(self, ra, dec, images):
-        """Try xdebpair → xmask → stub, returning a compatible result object."""
-        if self.use_xdebpair:
+        """Try xdebpair → single-aperture stub, returning a result object."""
+        if self.deblend:
             try:
                 from .deblending import XdebPairAdapter
                 result = XdebPairAdapter(ra, dec, images).run()
                 logger.info("xdebpair: %s", result)
                 return result
             except Exception as exc:
-                logger.error("xdebpair failed (%s); falling back to xmask/stub", exc)
+                logger.error("xdebpair failed (%s); falling back to the "
+                             "single-aperture stub", exc)
 
-        return self._run_xmask(ra, dec)
-
-    def _run_xmask(self, ra, dec):
-        try:
-            return self._XmaskPy(ra=ra, dec=dec, size_arcmin=self.download_size).run()
-        except Exception as exc:
-            logger.error("xmask failed (%s); falling back to stub", exc)
-            return _StubXmask(ra, dec, self.download_size).run()
+        return _StubXmask(ra, dec, self.download_size).run()
 
     # target CSV "type" values that mean "keep the components separate";
     # anything else (post_merger, typos, blank) counts as "other" = single.

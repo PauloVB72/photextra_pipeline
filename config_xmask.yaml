@@ -3,7 +3,7 @@
 # =============================================================================
 # Every knob of the pipeline lives here, so you never need to touch Python.
 # Values passed explicitly to Pipeline(...) in a driver script override this
-# file (currently only `mode` and `use_xdebpair` are also constructor kwargs).
+# file (currently only `mode` and `deblend` are also constructor kwargs).
 
 # ---- what to run ------------------------------------------------------------
 # photometry   : imaging pipeline only (download, deblend, fluxes, SED)
@@ -89,9 +89,9 @@ photometry:
 # Tunes photextra's own SEP-driven elliptical aperture (detect_sep_ellipse /
 # measure_sep_elliptical_photometry). Defaults reproduce the previously
 # hardcoded literals, so behaviour is UNCHANGED unless you edit these.
-# NOTE: xmask's internal SEP parameters (thresh/minarea/deblend_nthresh/
-# deblend_cont in xmask.deblend, used by aperture_mode: mask) are NOT
-# independently tunable yet — the public xmask API does not accept them as
+# NOTE: xdebpair's internal SEP parameters (thresh/minarea/deblend_nthresh/
+# deblend_cont in xdebpair.sep_segment, used by aperture_mode: mask) are NOT
+# independently tunable yet — the XdebPairAdapter does not accept them as
 # kwargs, so this section does not affect the mask-mode deblending.
 sep:
   thresh_sigma: 1.5        # SEP detection threshold in units of background rms
@@ -111,9 +111,11 @@ spectroscopy:
   survey_filters: [Legacy, SDSS]
 
 # ---- source separation ------------------------------------------------------
-# Try xdebpair for source separation (falls back to xmask, then to a simple
-# circular stub, if unavailable). Also a Pipeline(...) constructor kwarg.
-use_xdebpair: true
+# Attempt xdebpair source separation (true, default), falling back to a
+# trivial single-circular-aperture stub if xdebpair fails or is unavailable.
+# false = always use the stub (no deblending). Also a Pipeline(...) kwarg.
+# (Legacy key name: use_xdebpair — still honoured.)
+deblend: true
 
 # ---- imaging bands to download and measure ----------------------------------
 surveys:

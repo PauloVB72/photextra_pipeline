@@ -50,7 +50,7 @@ def _run_one(tgt):
     row = {"target_id": tgt["id"], "status": "FAILED", "total_s": None, "error": ""}
     t0 = _time.perf_counter()
     try:
-        pipe = Pipeline(config=dict(cfg), use_xdebpair=True, mode="both")
+        pipe = Pipeline(config=dict(cfg), deblend=True, mode="both")
         pipe.run(dict(tgt))
         row["status"] = "OK"
     except Exception as exc:

@@ -108,7 +108,7 @@ spectroscopy:
   # Survey families for synthetic photometry computed from the spectrum.
   # (Also accepted at the top level as `survey_filters:`; the spectroscopy:
   # value takes precedence.)
-  survey_filters: [Legacy, SDSS]
+  survey_filters: [PS1, SDSS]
 
 # ---- source separation ------------------------------------------------------
 # Attempt xdebpair source separation (true, default), falling back to a
@@ -121,13 +121,16 @@ deblend: true
 surveys:
   - GALEX_FUV
   - GALEX_NUV
-  - Legacy_g
-  - Legacy_r
-  - Legacy_z
+  - PS1_g
+  - PS1_r
+  - PS1_i
+  - PS1_z
+  - PS1_y
+  - TwoMASS_J
+  - TwoMASS_H
+  - TwoMASS_Ks
   - WISE_W1
   - WISE_W2
-  - WISE_W3
-  - WISE_W4
 
 # Cutout size in arcmin (width of the downloaded images)
 download_size: 1
@@ -136,7 +139,7 @@ download_size: 1
 # All bands are reprojected onto this grid for the processing-grid PLOTS only
 # (science fluxes are measured on each band's native resolution).
 common_grid:
-  reference: WISE_W4      # documentation only; the grid is defined by pixscale/size
+  reference: WISE_W2      # documentation only; the grid is defined by pixscale/size
   pixscale: 1.375         # arcsec/pix
   size: 45                # pixels
 

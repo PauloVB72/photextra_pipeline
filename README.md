@@ -198,3 +198,24 @@ All tests currently pass.
 Developed by Paulo Vásquez (CHANCES). Part of the implementation,
 debugging, and documentation of this repo was done with assistance from
 Claude (Anthropic).
+
+## Acknowledgments
+
+This pipeline does not vendor or copy code from the packages below — all
+implementations here are original — but its design borrows ideas from, and we
+gratefully acknowledge:
+
+- [**HostPhot**](https://github.com/temuller/hostphot) (Müller-Bravo &
+  Galbany) — the multi-survey cutout-download dispatch pattern
+  (`hostphot_downloader` in `downloader.py`) followed HostPhot's approach of
+  routing per-survey cutout requests behind a single unified interface.
+- **unWISE forced photometry** (Lang et al. 2016, unWISE Catalog / the
+  Tractor) — `unwise_forced.py` follows the general idea of forced,
+  PSF-matched photometry at source positions rather than blind aperture
+  photometry on the WISE mosaics.
+- **Zou et al. (2024)** — the S/N²-weighted multi-band aperture normalization
+  used by `both_method: own` extends the methodology described in that paper.
+- **XpectraFit**'s own acknowledgments (pPXF, E-MILES, PyQSOFit, Aydar et al.
+  2026) apply transitively here, since `spectral_fit.py` calls into
+  XpectraFit for all spectroscopic fitting — see
+  [`xpectrafit`'s README](../xpectrafit/README.md#acknowledgments).

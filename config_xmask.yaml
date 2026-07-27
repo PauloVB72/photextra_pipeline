@@ -2,32 +2,71 @@
 # photextra_pipeline configuration
 # =============================================================================
 # Every knob of the pipeline lives here, so you never need to touch Python.
-# Values passed explicitly to Pipeline(...) in a script override this file.
+# Values passed explicitly to Pipeline(...) in a driver script override this
+# file (currently only `mode` and `deblend` are also constructor kwargs).
 
-# --- what to run -------------------------------------------------------------
+# ---- what to run ------------------------------------------------------------
 # photometry   : imaging pipeline only (download, deblend, fluxes, SED)
 # spectroscopy : XpectraFit spectral fit only (needs redshift; the DESI/SDSS
 #                spectrum is found automatically from RA/Dec if not provided)
 # both         : photometry + spectroscopy, combined into one product per galaxy
+#                (the spectrum is normalized to the imaging photometry with a
+#                wavelength-dependent aperture correction — always runs in this
+#                mode; see Pipeline._combine_phot_spec)
 mode: photometry
 
-# --- how photometry+spectroscopy are combined (only used when mode: both) ----
-# own    : the built-in combination (spectrum normalized to the imaging
-#          photometry with the wavelength-dependent aperture correction)
-# cigale : ALSO run a CIGALE SED fit using the full DESI spectrum
-#          (use_spectro=True, the validated native-spectroscopy method) and
-#          append cigale_* columns (stellar mass, SFR, chi2, ...) to the
-#          combined table. Requires the "cigale" conda environment.
-both_method: own
+# ---- CIGALE SED fitting (optional, any mode) --------------------------------
+# cigale_run: run an ADDITIONAL CIGALE SED fit for the selected mode and append
+#   cigale_* columns (stellar mass, SFR, chi2, ...) to the per-target product.
+#   This is the ONLY switch for CIGALE, uniform across all three modes. In
+#   mode: both the built-in combination ALWAYS runs regardless; CIGALE is just
+#   an extra fit on top. Requires the "cigale" conda environment. Per mode:
+#   * both         : fixed known z + broadband + full DESI spectrum
+#                    (use_spectro=True, the validated native-spectroscopy
+#                    method).
+#   * spectroscopy : spectrum-only fit at the target's known z — no broadband
+#                    columns are fabricated. Less constrained than a combined
+#                    photometry+spectrum fit.
+#   * photometry   : broadband-only fit with the redshift left BLANK, so
+#                    CIGALE chi2-scans a redshift grid (its native photo-z,
+#                    same template-fitting idea as LePhare) and the best-fit
+#                    z is appended as cigale_z_phot.
+#   NOTE on pcigale.ini: there is deliberately NO config key to point at a
+#   different ini or to template it. TWO packaged templates exist under
+#   photextra_pipeline/data/cigale/ and prepare_work_dir() picks between
+#   them by mode automatically — you don't choose this in config:
+#     - pcigale.ini[.spec]        (both/spectroscopy): redshift = empty,
+#       so CIGALE uses each target's EXACT known z (auto-built from the
+#       input file). Do not add a z grid here — it would snap known
+#       redshifts to the grid and degrade derived stellar mass/SFR.
+#     - pcigale_photoz.ini[.spec] (photometry): explicit redshift grid +
+#       use_spectro = False, since photometry-only rows carry no spectrum.
+#   Both are copied AS-IS into every work dir; the pipeline never writes
+#   their SED-module parameters, and they must NEVER be regenerated with
+#   `pcigale genconf` (it resets the validated grid — see
+#   docs/cigale_tutorial/TUTORIAL.md). Edit either file BY HAND (e.g. to
+#   widen/coarsen the photo-z grid for a different redshift range).
+cigale_run: false
+# cigale_batch: when false (default) CIGALE runs per target, immediately after
+#   that target's product is ready. When true, Pipeline.run() SKIPS the
+#   per-target CIGALE fit entirely (products are written without cigale_*
+#   columns) and YOUR DRIVER SCRIPT MUST call
+#   Pipeline.run_cigale_batch(targets) itself once, after the whole run:
+#   one `pcigale run` over all targets is much faster (the model grid is
+#   reused across rows). The pipeline cannot detect a forgotten call.
+cigale_batch: false
 
+# ---- photometry -------------------------------------------------------------
 photometry:
   # How the flux aperture is defined for each galaxy:
   # mask          : xdebpair pixel masks per component (default; best for
-  #                 merging pairs — each galaxy gets its own mask)
+  #                 merging pairs — each galaxy gets its own mask, then
+  #                 isolated-component photometry + deblending + unWISE forced)
   # aperture      : one fixed circular aperture at the target position
   #                 (simple, no deblending; radius set below)
   # sep_apertures : one elliptical aperture from a SEP source detection
-  #                 (a, b, theta of the galaxy; Kron-like, no masks/xdebpair)
+  #                 (a, b, theta of the galaxy; Kron-like, no masks/xdebpair;
+  #                 detection tuned by the sep: section below)
   aperture_mode: mask
 
   # Only used with aperture_mode: mask. What to do when xdebpair splits the
@@ -46,38 +85,73 @@ photometry:
   # Circular aperture radius in arcsec (only for aperture_mode: aperture)
   aperture_radius_arcsec: 5.0
 
+# ---- SEP source detection (only aperture_mode: sep_apertures) ---------------
+# Tunes photextra's own SEP-driven elliptical aperture (detect_sep_ellipse /
+# measure_sep_elliptical_photometry). Defaults reproduce the previously
+# hardcoded literals, so behaviour is UNCHANGED unless you edit these.
+# NOTE: xdebpair's internal SEP parameters (thresh/minarea/deblend_nthresh/
+# deblend_cont in xdebpair.sep_segment, used by aperture_mode: mask) are NOT
+# independently tunable yet — the XdebPairAdapter does not accept them as
+# kwargs, so this section does not affect the mask-mode deblending.
+sep:
+  thresh_sigma: 1.5        # SEP detection threshold in units of background rms
+  ellipse_k: 2.5           # Kron-like scale of the (a,b) half-axes measured
+  max_match_arcsec: 10.0   # max distance to accept the SEP source as the target
+  ref_survey: Legacy_r     # band the ellipse is detected on
+
+# ---- spectroscopy -----------------------------------------------------------
 spectroscopy:
   # Fit an AGN component in XpectraFit (recommended: true)
   fit_agn: true
   # Instrumental FWHM of the spectrum in Angstrom (SDSS/DESI ~ 2.5)
   spectrum_fwhm: 2.5
-  # Survey families for synthetic photometry computed from the spectrum
-  survey_filters: [Legacy, SDSS]
+  # Survey families for synthetic photometry computed from the spectrum.
+  # (Also accepted at the top level as `survey_filters:`; the spectroscopy:
+  # value takes precedence.)
+  survey_filters: [PS1, SDSS]
 
-# Try xdebpair for source separation (falls back to xmask, then to a simple
-# circular stub, if unavailable)
-use_xdebpair: true
+# ---- source separation ------------------------------------------------------
+# Attempt xdebpair source separation (true, default), falling back to a
+# trivial single-circular-aperture stub if xdebpair fails or is unavailable.
+# false = always use the stub (no deblending). Also a Pipeline(...) kwarg.
+# (Legacy key name: use_xdebpair — still honoured.)
+deblend: true
 
-# --- imaging bands to download and measure ----------------------------------
+# ---- imaging bands to download and measure ----------------------------------
 surveys:
   - GALEX_FUV
   - GALEX_NUV
-  - Legacy_g
-  - Legacy_r
-  - Legacy_z
+  - PS1_g
+  - PS1_r
+  - PS1_i
+  - PS1_z
+  - PS1_y
+  - TwoMASS_J
+  - TwoMASS_H
+  - TwoMASS_Ks
   - WISE_W1
   - WISE_W2
-  - WISE_W3
-  - WISE_W4
 
 # Cutout size in arcmin (width of the downloaded images)
 download_size: 1
 
-# Common analysis grid all bands are reprojected onto (WISE W4 grid)
+# ---- common analysis grid ---------------------------------------------------
+# All bands are reprojected onto this grid for the processing-grid PLOTS only
+# (science fluxes are measured on each band's native resolution).
 common_grid:
-  reference: WISE_W4
+  reference: WISE_W2      # documentation only; the grid is defined by pixscale/size
   pixscale: 1.375         # arcsec/pix
   size: 45                # pixels
 
+# ---- output -----------------------------------------------------------------
 # Where all per-target products/plots are written
 output_dir: /home/polo/Escritorio/PHD/code/photextra_pipeline/test_output
+
+# ---- targets (CLI only; the driver scripts pass targets directly) -----------
+# The `photextra` CLI resolves targets from, in order of precedence:
+#   1. --targets CSV on the command line,
+#   2. targets_csv: path below,
+#   3. an inline targets: list of {id, ra, dec, z, type} dicts.
+# targets_csv: members.csv
+# targets:
+#   - {id: example, ra: 150.0, dec: 2.0, z: 0.05, type: merger}

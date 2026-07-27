@@ -64,7 +64,7 @@ STAGE_WORKERS = {
     "spectroscopy": 6,
     "both": 10,
 }
-PREFETCH_WORKERS = 3
+PREFETCH_WORKERS = 5
 
 
 # ---------------------------------------------------------------------------

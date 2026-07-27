@@ -3,8 +3,8 @@
 Flow: download -> xdebpair (source separation) -> convolve to W4 PSF ->
 reproject to common grid -> reproject masks -> measure fluxes -> write outputs.
 
-xdebpair is tried first; falls back to xmask if unavailable, then to a
-built-in stub that produces a single circular component.
+xdebpair is the only real deblender; if it fails or is disabled the pipeline
+falls back to a built-in stub that produces a single circular component.
 
 The ``mode`` selector chooses which analysis runs:
 
@@ -49,16 +49,6 @@ from . import validation_plots as vp
 logger = logging.getLogger(__name__)
 
 
-def _load_xmask():
-    """Import real xmask or fall back to a built-in stub."""
-    try:
-        from xmask import XmaskPy
-        return XmaskPy, False
-    except Exception:
-        logger.warning("xmask not available; using built-in stub")
-        return _StubXmask, True
-
-
 def _xdebpair_available():
     """Check whether xdebpair can be imported."""
     try:
@@ -73,6 +63,14 @@ def _xdebpair_available():
 
 
 class _StubXmaskResult:
+    """Lightweight deblending-result container (masks + wcs + pair metadata).
+
+    Used by the trivial single-aperture fallback (_StubXmask) and reused as
+    the result object for the aperture/sep_apertures photometry modes. It is
+    independent of the retired external ``xmask`` package; the name is kept
+    for interface continuity.
+    """
+
     def __init__(self, masks, wcs, n_components, separation_arcsec):
         self.masks = masks
         self.wcs = wcs
@@ -104,12 +102,11 @@ class _StubXmask:
 VALID_MODES = ("photometry", "spectroscopy", "both")
 VALID_APERTURE_MODES = ("mask", "aperture", "sep_apertures")
 VALID_SEPARATIONS = ("central", "total", "pair")
-VALID_BOTH_METHODS = ("own", "cigale")
 
 
 class Pipeline:
-    def __init__(self, config="config_xmask.yaml", use_xdebpair=None,
-                 mode=None, both_method=None):
+    def __init__(self, config="config_xmask.yaml", deblend=None,
+                 mode=None):
         """
         Parameters
         ----------
@@ -120,22 +117,40 @@ class Pipeline:
             arguments below OVERRIDE the config value when passed
             explicitly (backward compatibility with existing driver
             scripts).
-        use_xdebpair : bool, optional
-            Try xdebpair for source separation before xmask/stub.
-            Default: config key ``use_xdebpair`` (true).
+        deblend : bool, optional
+            True (default): attempt xdebpair source separation, falling
+            back to the trivial single-circular-aperture stub if xdebpair
+            fails or is not importable. False: skip xdebpair entirely and
+            always use the stub (fast/cheap runs where deblending is not
+            needed). Default: config key ``deblend`` (true; the legacy
+            key ``use_xdebpair`` is still honoured).
         mode : {"photometry", "spectroscopy", "both"}, optional
             Which analysis :meth:`run` performs. ``"photometry"`` runs only
             the photometric pipeline; ``"spectroscopy"`` runs only the
             XpectraFit spectral fit; ``"both"`` runs the photometric
             pipeline plus the spectral fit when the target has a spectrum.
             Default: config key ``mode`` (photometry).
-        both_method : {"own", "cigale"}, optional
-            How photometry+spectroscopy are combined in mode="both":
-            ``"own"`` is the built-in normalization
-            (:meth:`_combine_phot_spec`); ``"cigale"`` ADDITIONALLY runs a
-            CIGALE SED fit with the full DESI spectrum (use_spectro=True)
-            and appends ``cigale_*`` columns to the combined product.
-            Default: config key ``both_method`` (own).
+
+        Notes
+        -----
+        The CIGALE knobs are config-only (no kwargs):
+
+        - ``cigale_run`` (bool, default false): enable the CIGALE SED fit
+          for ANY mode, not only ``both``. It is the ONLY switch for CIGALE;
+          the built-in ``_combine_phot_spec`` combination ALWAYS runs in
+          mode="both" regardless, and CIGALE is simply an ADDITIONAL fit on
+          top. In mode="spectroscopy" CIGALE fits the spectrum alone at the known
+          z (less constrained than a combined fit); in mode="photometry"
+          it fits the broadband fluxes with the redshift left blank so
+          CIGALE chi2-scans the ``redshifting`` z grid (photo-z,
+          ``cigale_z_phot`` column) — that grid must be hand-edited into
+          the packaged ``photextra_pipeline/data/cigale/pcigale.ini``
+          (the pipeline copies it as-is and NEVER writes its SED-module
+          parameters).
+        - ``cigale_batch`` (bool, default false): when true, :meth:`run`
+          SKIPS the per-target CIGALE fit entirely; the driver script
+          MUST call :meth:`run_cigale_batch` itself once after the whole
+          run — the pipeline cannot detect a forgotten call.
         """
         if isinstance(config, dict):
             self.config = config
@@ -149,11 +164,22 @@ class Pipeline:
         if self.mode not in VALID_MODES:
             raise ValueError(f"mode must be one of {VALID_MODES}, "
                              f"got {self.mode!r}")
-        self.both_method = both_method if both_method is not None else \
-            self.config.get("both_method", "own")
-        if self.both_method not in VALID_BOTH_METHODS:
-            raise ValueError(f"both_method must be one of "
-                             f"{VALID_BOTH_METHODS}, got {self.both_method!r}")
+        # CIGALE flags (config-only; see __init__ Notes and
+        # config_xmask.yaml). cigale_run is the single switch that enables
+        # the CIGALE SED fit for ANY mode. cigale_batch=True means the
+        # DRIVER must call run_cigale_batch() manually after the full run.
+        # All CIGALE SED-module tuning (z grid, use_spectro, ...) is done by
+        # hand-editing photextra_pipeline/data/cigale/pcigale.ini — the
+        # pipeline never auto-writes that file.
+        self.cigale_run = bool(self.config.get("cigale_run", False))
+        self.cigale_batch = bool(self.config.get("cigale_batch", False))
+        if self.cigale_run:
+            logger.warning(
+                "cigale_run=True: the CIGALE fit uses the packaged "
+                "pcigale.ini / pcigale_photoz.ini under "
+                "photextra_pipeline/data/cigale/ AS-IS. Their redshift grid "
+                "(photo-z) and SED-module grids are NEVER auto-configured — "
+                "hand-edit those .ini templates for your science case.")
 
         # --- photometry sub-config ----------------------------------------
         phot_cfg = self.config.get("photometry") or {}
@@ -169,6 +195,21 @@ class Pipeline:
         # circular aperture radius (arcsec) for aperture_mode="aperture"
         self.aperture_radius_arcsec = float(
             phot_cfg.get("aperture_radius_arcsec", 5.0))
+
+        # --- SEP source-detection sub-config (aperture_mode="sep_apertures") -
+        # These knobs feed photextra's OWN detect_sep_ellipse /
+        # measure_sep_elliptical_photometry (the sep_apertures path); the
+        # defaults reproduce the previously-hardcoded literals so behaviour is
+        # unchanged unless the user edits the config. NOTE: xdebpair's
+        # internal SEP parameters (thresh/minarea/deblend_nthresh/
+        # deblend_cont in xdebpair.sep_segment) are NOT independently tunable
+        # from here — this sep: section does not reach the xdebpair mask
+        # builder used by aperture_mode="mask".
+        sep_cfg = self.config.get("sep") or {}
+        self.sep_thresh_sigma = float(sep_cfg.get("thresh_sigma", 1.5))
+        self.sep_ellipse_k = float(sep_cfg.get("ellipse_k", 2.5))
+        self.sep_max_match_arcsec = float(sep_cfg.get("max_match_arcsec", 10.0))
+        self.sep_ref_survey = sep_cfg.get("ref_survey", "Legacy_r")
 
         # --- spectroscopy sub-config ---------------------------------------
         spec_cfg = self.config.get("spectroscopy") or {}
@@ -187,13 +228,13 @@ class Pipeline:
         self.survey_filters = spec_cfg.get(
             "survey_filters", self.config.get("survey_filters",
                                               ["Legacy", "SDSS"]))
-        self._XmaskPy, self._xmask_is_stub = _load_xmask()
-        want_xdeb = use_xdebpair if use_xdebpair is not None else \
-            bool(self.config.get("use_xdebpair", True))
-        self.use_xdebpair = want_xdeb and _xdebpair_available()
-        if want_xdeb and not self.use_xdebpair:
-            logger.warning("xdebpair requested but not importable; "
-                           "falling back to xmask/stub")
+        want_deblend = deblend if deblend is not None else \
+            bool(self.config.get("deblend",
+                                 self.config.get("use_xdebpair", True)))
+        self.deblend = want_deblend and _xdebpair_available()
+        if want_deblend and not self.deblend:
+            logger.warning("deblend=True but xdebpair not importable; "
+                           "falling back to the single-aperture stub")
 
     def run(self, target):
         """Run the analysis selected by ``self.mode`` on one target dict."""
@@ -213,16 +254,42 @@ class Pipeline:
         # "already done" criterion: the mode's final product file exists and
         # is non-empty in {tdir}/products/ (photometry -> _photometry,
         # spectroscopy -> _spectral, both -> _combined).
-        if self.mode == "photometry" and \
-                self._cached_product(prod_dir, target_id, "photometry"):
-            logger.info("%s: cached photometry product found; skipping",
-                        target_id)
-            return {"output_dir": tdir, "skipped": "cached_photometry"}
-        if self.mode == "spectroscopy" and \
-                self._cached_product(prod_dir, target_id, "spectral"):
-            logger.info("%s: cached spectral product found; skipping",
-                        target_id)
-            return {"output_dir": tdir, "skipped": "cached_spectral"}
+        if self.mode == "photometry":
+            phot_cached = self._cached_product(prod_dir, target_id,
+                                               "photometry")
+            if phot_cached:
+                # fill in cigale_* columns missing from an older cached
+                # product (never rerun CIGALE if they are already there)
+                if self._cigale_per_target() and \
+                        not self._product_has_cigale(phot_cached):
+                    phot = self._load_cached_photometry(phot_cached,
+                                                        self.surveys)
+                    row = self._cigale_row_photometry(target, phot or {})
+                    cols = self._run_cigale_for_target(
+                        target, tdir, row, cigale_mode="photometry")
+                    if cols:
+                        self._append_cigale_columns(prod_dir, target_id,
+                                                    "photometry", cols)
+                logger.info("%s: cached photometry product found; skipping",
+                            target_id)
+                return {"output_dir": tdir, "skipped": "cached_photometry"}
+        if self.mode == "spectroscopy":
+            spec_cached = self._cached_product(prod_dir, target_id,
+                                               "spectral")
+            if spec_cached:
+                if self._cigale_per_target() and \
+                        not self._product_has_cigale(spec_cached):
+                    row = self._load_cached_spectral(prod_dir, target_id) \
+                        or {}
+                    row["z"] = target.get("z")
+                    cols = self._run_cigale_for_target(
+                        target, tdir, row, cigale_mode="spectroscopy")
+                    if cols:
+                        self._append_cigale_columns(prod_dir, target_id,
+                                                    "spectral", cols)
+                logger.info("%s: cached spectral product found; skipping",
+                            target_id)
+                return {"output_dir": tdir, "skipped": "cached_spectral"}
 
         cached_spec = None
         if self.mode == "both":
@@ -242,6 +309,15 @@ class Pipeline:
         # --- Spectroscopy-only: skip the whole photometric pipeline ---
         if self.mode == "spectroscopy":
             spectral_result = self._run_spectroscopy(target, tdir)
+            if spectral_result is not None and self._cigale_per_target():
+                # spectrum-only CIGALE fit at the target's known z (no
+                # broadband columns; less constrained than a combined fit)
+                row = dict(spectral_result)
+                row["z"] = target.get("z")
+                cols = self._run_cigale_for_target(
+                    target, tdir, row, cigale_mode="spectroscopy")
+                if cols:
+                    spectral_result.update(cols)
             self._write_spectral_products(prod_dir, target_id, spectral_result)
             logger.info("done %s -> %s", target_id, tdir)
             out = {"output_dir": tdir}
@@ -257,7 +333,7 @@ class Pipeline:
         shape = (self.grid_size, self.grid_size)
 
         if self.aperture_mode == "mask":
-            # Source separation: xdebpair > xmask > stub, then the
+            # Source separation: xdebpair > stub, then the
             # classification-aware separation policy (central/total/pair)
             seg_result = self._run_deblending(ra, dec, images)
             seg_result = self._apply_separation_policy(seg_result, target)
@@ -291,7 +367,10 @@ class Pipeline:
         else:  # sep_apertures
             from .photometry import measure_sep_elliptical_photometry
             photometry, _ellipse = measure_sep_elliptical_photometry(
-                images, self.surveys, ra, dec)
+                images, self.surveys, ra, dec,
+                ref_survey=self.sep_ref_survey, k=self.sep_ellipse_k,
+                thresh_sigma=self.sep_thresh_sigma,
+                max_match_arcsec=self.sep_max_match_arcsec)
 
         comp_seds = self._build_seds(photometry, masks_native)
 
@@ -361,14 +440,24 @@ class Pipeline:
                 target, photometry, spectral_result,
                 fiber_photometry=fiber_photometry,
                 fiber_diam_arcsec=fiber_diam)
-            if self.both_method == "cigale" and combined_result is not None:
+            if self._cigale_per_target() and combined_result is not None:
                 self._run_cigale_for_target(target, tdir, combined_result)
+
+        # --- photometry-only CIGALE fit (photo-z; see _cigale_enabled) ---
+        cigale_phot_cols = None
+        if self.mode == "photometry" and self._cigale_per_target():
+            row = self._cigale_row_photometry(target, photometry)
+            cigale_phot_cols = self._run_cigale_for_target(
+                target, tdir, row, cigale_mode="photometry")
 
         self._write_products(prod_dir, target_id, photometry, masks_native,
                              deblend_ratio, deblend_tphot_, deblend_comb,
                              unwise_forced, galaxy_table,
                              spectral_result=spectral_result,
                              combined_result=combined_result)
+        if cigale_phot_cols:
+            self._append_cigale_columns(prod_dir, target_id, "photometry",
+                                        cigale_phot_cols)
         self._make_plots(plot_dir, target_id, target, images_conv, masks_native,
                          masks_reproj, target_wcs, photometry, comp_seds,
                          seg_result, deblend_comb, unwise_forced,
@@ -401,6 +490,8 @@ class Pipeline:
             out["spectral_result"] = spectral_result
         if combined_result is not None:
             out["combined_result"] = combined_result
+        if cigale_phot_cols:
+            out["cigale"] = cigale_phot_cols
         return out
 
     # ------------------------------------------------------------------
@@ -519,7 +610,7 @@ class Pipeline:
             target, photometry, spectral_result,
             fiber_photometry=fiber_photometry,
             fiber_diam_arcsec=fiber_diam)
-        if self.both_method == "cigale" and combined_result is not None:
+        if self._cigale_per_target() and combined_result is not None:
             self._run_cigale_for_target(target, tdir, combined_result)
         self._write_combined_products(prod_dir, target_id, combined_result)
 
@@ -543,7 +634,7 @@ class Pipeline:
     def _check_download_failures(self, target_id, images):
         """Refuse to silently degrade science when downloads failed.
 
-        If the Legacy optical imaging that drives xdebpair/xmask deblending
+        If the Legacy optical imaging that drives xdebpair deblending
         failed to DOWNLOAD (rate limit, network — i.e. an "error" entry from
         the downloader, avoidable by re-running), the deblending would fall
         through to the synthetic circular stub mask and produce a fake
@@ -961,30 +1052,104 @@ class Pipeline:
         return combined
 
     # ------------------------------------------------------------------
-    # CIGALE (both_method="cigale")
+    # CIGALE (cigale_run enables the SED fit for any mode)
     # ------------------------------------------------------------------
 
-    def _run_cigale_for_target(self, target, tdir, combined_result):
+    def _cigale_enabled(self):
+        """CIGALE fitting requested for the current mode.
+
+        ``cigale_run`` is the single switch, uniform across all three modes.
+        In mode="both" the built-in ``_combine_phot_spec`` combination always
+        runs regardless; CIGALE is an ADDITIONAL optional fit on top.
+        """
+        return self.cigale_run
+
+    def _cigale_per_target(self):
+        """True when CIGALE should run per target, inside :meth:`run`.
+
+        ``cigale_batch=True`` disables the per-target fit even when
+        CIGALE is enabled: the driver must call :meth:`run_cigale_batch`
+        manually after the whole run.
+        """
+        return self._cigale_enabled() and not self.cigale_batch
+
+    @staticmethod
+    def _product_has_cigale(path):
+        """True when the product at ``path`` already carries cigale_* columns
+        (skip-check so CIGALE is never rerun on an already-fitted product)."""
+        try:
+            tbl = Table.read(path)
+            return any(c.startswith("cigale_") for c in tbl.colnames)
+        except Exception:
+            return False
+
+    def _append_cigale_columns(self, prod_dir, tid, kind, cols):
+        """Append (broadcast) cigale_* scalar columns to a {tid}_{kind}
+        product and rewrite its .csv + .ecsv."""
+        path = self._cached_product(prod_dir, tid, kind)
+        if path is None or not cols:
+            return
+        try:
+            tbl = Table.read(path)
+            for k, v in cols.items():
+                tbl[k] = v  # scalar broadcasts over all rows
+            base = os.path.join(prod_dir, f"{tid}_{kind}")
+            tbl.write(base + ".csv", format="csv", overwrite=True)
+            tbl.write(base + ".ecsv", format="ascii.ecsv", overwrite=True)
+        except Exception as exc:
+            logger.error("cigale: could not update %s: %s", path, exc)
+
+    def _cigale_row_photometry(self, target, photometry):
+        """Flat phot_* row for a photometry-only CIGALE fit.
+
+        No spectrum and NO redshift: the row's z stays blank so CIGALE
+        chi2-scans the redshifting module's z grid (photo-z; the grid must
+        be hand-edited into the packaged pcigale.ini)."""
+        row = {"target_id": str(target.get("id"))}
+        for survey in self.surveys:
+            m = (photometry or {}).get(survey, {}).get("total", {})
+            if not isinstance(m, dict):
+                m = {}
+            row[f"phot_{survey}_flux_mjy"] = m.get("flux_mjy", np.nan)
+            row[f"phot_{survey}_flux_err_mjy"] = m.get("flux_err_mjy",
+                                                       np.nan)
+        return row
+
+    def _run_cigale_for_target(self, target, tdir, result_row,
+                               cigale_mode="both"):
         """Single-target CIGALE fit; appends cigale_* columns in place.
+
+        cigale_mode selects the input-row shape (see
+        :func:`.cigale_integration.build_spectro_row`):
+
+        - "both" (default): fixed z + broadband + spectrum — the validated
+          combined method, unchanged.
+        - "spectroscopy": fixed z + spectrum only (no broadband columns).
+          Spectrum-only fits are less constrained than combined fits.
+        - "photometry": broadband only, redshift left blank — CIGALE's
+          photo-z over the hand-configured pcigale.ini z grid; the result
+          carries the extra ``cigale_z_phot`` column(s).
 
         Uses the batch machinery in :mod:`.cigale_integration` with a
         one-row input. When processing MANY targets, prefer
         :meth:`run_cigale_batch` after the per-target stages — one
         ``pcigale run`` over one multi-row input file is much faster than
         N single-target runs (CIGALE reuses its model grid across rows).
-        Never raises: on failure the combined product simply carries no
+        Never raises: on failure the product simply carries no
         cigale_* columns (a warning is logged).
         """
         tid = str(target["id"])
         try:
             from .cigale_integration import run_cigale_for_targets
-            npz = os.path.join(tdir, "spectroscopy", f"desi_{tid}.npz")
+            npz = None
+            if cigale_mode != "photometry":
+                npz = os.path.join(tdir, "spectroscopy", f"desi_{tid}.npz")
             work = os.path.join(tdir, "cigale")
             results = run_cigale_for_targets(
-                [(tid, dict(combined_result), npz)], work)
+                [(tid, dict(result_row), npz)], work, mode=cigale_mode)
             cols = results.get(tid)
             if cols:
-                combined_result.update(cols)
+                result_row.update(cols)
                 logger.info("%s: CIGALE columns appended (chi2_red=%.2f)",
                             tid, cols.get("cigale_chi2_red", np.nan))
             else:
@@ -994,77 +1159,102 @@ class Pipeline:
             logger.error("CIGALE fit failed for %s: %s", tid, exc)
             return None
 
-    def run_cigale_batch(self, targets, work_dir=None, conda_env="cigale"):
-        """Batch CIGALE fit over targets with cached combined products.
+    # mode -> per-target product kind read/updated by run_cigale_batch
+    _CIGALE_PRODUCT_KIND = {"photometry": "photometry",
+                            "spectroscopy": "spectral",
+                            "both": "combined"}
 
-        For every target whose ``{id}_combined.csv`` and cached DESI
-        spectrum exist under ``self.output_dir``, builds ONE
-        ``cigale_input.txt``, runs ONE ``pcigale run`` (much faster than
-        per-target runs), and rewrites each combined product with the
+    def run_cigale_batch(self, targets, work_dir=None, conda_env="cigale",
+                         force=False):
+        """Batch CIGALE fit over targets with cached per-mode products.
+
+        For every target whose product for ``self.mode`` exists under
+        ``self.output_dir`` (``{id}_photometry`` for mode="photometry",
+        ``{id}_spectral`` for "spectroscopy", ``{id}_combined`` for
+        "both"; the two spectrum-using modes also need the cached DESI
+        spectrum), builds ONE ``cigale_input.txt``, runs ONE ``pcigale
+        run`` (much faster than per-target runs — the model grid is
+        reused across rows), and rewrites each product with the
         ``cigale_*`` columns appended. Returns {target_id: cigale_cols}.
 
-        This is the recommended path for production runs: run the normal
-        photometry/spectroscopy/both stages first, then call this once.
+        Input rows follow the mode (see
+        :func:`.cigale_integration.build_spectro_row`): no broadband
+        columns for spectroscopy-only (spectrum-only fits are less
+        constrained than combined fits); no redshift for photometry-only
+        (CIGALE photo-z over the z grid hand-edited into the packaged
+        pcigale.ini; best-fit z returned as ``cigale_z_phot``).
+
+        IMPORTANT: this method is NEVER called automatically. With config
+        ``cigale_batch: true`` :meth:`run` skips the per-target CIGALE
+        fit, and your driver script MUST call ``run_cigale_batch(targets)``
+        itself once after the whole run over all targets — the pipeline
+        cannot detect a forgotten call.
+
+        Targets whose product already carries cigale_* columns are
+        skipped (checkpointing); pass ``force=True`` to refit them.
         """
         from .cigale_integration import (run_cigale_for_targets,
                                          read_combined_row)
         if work_dir is None:
             work_dir = os.path.join(self.output_dir, "cigale_batch")
+        kind = self._CIGALE_PRODUCT_KIND[self.mode]
+        need_spectrum = self.mode != "photometry"
 
         specs = []
         for t in targets:
             tid = str(t["id"])
-            prod = os.path.join(self.output_dir, tid, "products",
-                                f"{tid}_combined.csv")
+            prod_dir = os.path.join(self.output_dir, tid, "products")
             npz = os.path.join(self.output_dir, tid, "spectroscopy",
                                f"desi_{tid}.npz")
-            if not (os.path.exists(prod) and os.path.exists(npz)):
-                logger.warning("cigale batch: %s missing combined product "
-                               "or spectrum; skipped", tid)
+            if self.mode == "both":
+                # combined rows are read as plain string dicts from the csv
+                prod = os.path.join(prod_dir, f"{tid}_combined.csv")
+                if not os.path.exists(prod):
+                    prod = None
+            else:
+                prod = self._cached_product(prod_dir, tid, kind)
+            if prod is None or (need_spectrum and not os.path.exists(npz)):
+                logger.warning("cigale batch: %s missing %s product%s; "
+                               "skipped", tid, kind,
+                               " or spectrum" if need_spectrum else "")
                 continue
-            specs.append((tid, read_combined_row(prod), npz))
+            if not force and self._product_has_cigale(prod):
+                logger.info("cigale batch: %s already has cigale_* columns;"
+                            " skipped (force=True to refit)", tid)
+                continue
+            if self.mode == "photometry":
+                phot = self._load_cached_photometry(prod, self.surveys)
+                row = self._cigale_row_photometry(t, phot or {})
+            elif self.mode == "spectroscopy":
+                row = self._load_cached_spectral(prod_dir, tid) or {}
+                row["z"] = t.get("z")
+            else:
+                row = read_combined_row(prod)
+            specs.append((tid, row, npz))
 
         results = run_cigale_for_targets(specs, work_dir,
-                                         conda_env=conda_env)
+                                         conda_env=conda_env,
+                                         mode=self.mode)
 
-        # append the cigale_* columns to each target's combined product
+        # append the cigale_* columns to each target's product
         for tid, cols in results.items():
             prod_dir = os.path.join(self.output_dir, tid, "products")
-            path = self._cached_product(prod_dir, tid, "combined")
-            if path is None:
-                continue
-            try:
-                tbl = Table.read(path)
-                for k, v in cols.items():
-                    tbl[k] = [v]
-                base = os.path.join(prod_dir, f"{tid}_combined")
-                tbl.write(base + ".csv", format="csv", overwrite=True)
-                tbl.write(base + ".ecsv", format="ascii.ecsv",
-                          overwrite=True)
-            except Exception as exc:
-                logger.error("cigale batch: could not update %s: %s",
-                             path, exc)
+            self._append_cigale_columns(prod_dir, tid, kind, cols)
         return results
 
     def _run_deblending(self, ra, dec, images):
-        """Try xdebpair → xmask → stub, returning a compatible result object."""
-        if self.use_xdebpair:
+        """Try xdebpair → single-aperture stub, returning a result object."""
+        if self.deblend:
             try:
                 from .deblending import XdebPairAdapter
                 result = XdebPairAdapter(ra, dec, images).run()
                 logger.info("xdebpair: %s", result)
                 return result
             except Exception as exc:
-                logger.error("xdebpair failed (%s); falling back to xmask/stub", exc)
+                logger.error("xdebpair failed (%s); falling back to the "
+                             "single-aperture stub", exc)
 
-        return self._run_xmask(ra, dec)
-
-    def _run_xmask(self, ra, dec):
-        try:
-            return self._XmaskPy(ra=ra, dec=dec, size_arcmin=self.download_size).run()
-        except Exception as exc:
-            logger.error("xmask failed (%s); falling back to stub", exc)
-            return _StubXmask(ra, dec, self.download_size).run()
+        return _StubXmask(ra, dec, self.download_size).run()
 
     # target CSV "type" values that mean "keep the components separate";
     # anything else (post_merger, typos, blank) counts as "other" = single.
@@ -1197,9 +1387,13 @@ class Pipeline:
         mask = None
         classification = self.aperture_mode
         if self.aperture_mode == "sep_apertures":
-            ellipse = detect_sep_ellipse(images, ra, dec)
+            ellipse = detect_sep_ellipse(
+                images, ra, dec, ref_survey=self.sep_ref_survey,
+                thresh_sigma=self.sep_thresh_sigma,
+                max_match_arcsec=self.sep_max_match_arcsec)
             if ellipse is not None:
-                mask = sep_ellipse_mask(ellipse, ref_wcs, ref_shape)
+                mask = sep_ellipse_mask(ellipse, ref_wcs, ref_shape,
+                                        k=self.sep_ellipse_k)
         if mask is None:  # circular aperture (also SEP-detection fallback)
             if self.aperture_mode == "sep_apertures":
                 logger.warning("sep_apertures: SEP detection failed; "

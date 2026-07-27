@@ -598,7 +598,9 @@ def sep_ellipse_mask(ellipse, wcs, shape, k=SEP_ELLIPSE_K):
 
 def measure_sep_elliptical_photometry(images, surveys, ra, dec,
                                       ref_survey="Legacy_r",
-                                      k=SEP_ELLIPSE_K):
+                                      k=SEP_ELLIPSE_K,
+                                      thresh_sigma=1.5,
+                                      max_match_arcsec=10.0):
     """Elliptical-aperture photometry from a SEP detection (no masks/xdebpair).
 
     The ellipse (a, b, theta) is detected once on the reference band
@@ -617,7 +619,9 @@ def measure_sep_elliptical_photometry(images, surveys, ra, dec,
     from astropy.wcs.utils import proj_plane_pixel_scales
     from photutils.aperture import EllipticalAperture, aperture_photometry
 
-    ellipse = detect_sep_ellipse(images, ra, dec, ref_survey=ref_survey)
+    ellipse = detect_sep_ellipse(images, ra, dec, ref_survey=ref_survey,
+                                 thresh_sigma=thresh_sigma,
+                                 max_match_arcsec=max_match_arcsec)
     if ellipse is None:
         return {}, None
 

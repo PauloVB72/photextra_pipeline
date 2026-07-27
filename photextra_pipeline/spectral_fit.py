@@ -74,14 +74,90 @@ def _flatten_emission_lines(result):
     return out
 
 
-def _load_spectrum(path, z, target_id):
+def _bin_spectrum(wave, flux, ivar, factor):
+    """Average adjacent pixels by ``factor`` (boxcar), combining ivar properly.
+
+    DESI spectra are sampled at 0.8 Angstrom on a linear grid, i.e. ~2 pixels
+    per resolution element (FWHM ~1.5-1.8 Angstrom). Adjacent pixels are
+    therefore strongly correlated, which violates pPXF's independent-noise
+    assumption: at native sampling the kinematic fit is over-sensitive to the
+    (correlated) fine structure and lands on a spurious broad + velocity-shifted
+    LOSVD (velocity dispersion inflated to ~350-500 km/s and a ~400-700 km/s
+    velocity offset, even though the absorption lines actually sit at the same
+    observed wavelengths as the SDSS spectrum of the same object). Averaging to
+    ~Nyquist (1.6 Angstrom / ~1 pixel per FWHM) decorrelates the pixels and
+    recovers velocity dispersions that agree with the matching SDSS fit.
+
+    NB: interpolating onto a coarser log grid (e.g. via ppxf ``log_rebin`` at a
+    larger velscale) does NOT fix this — only true pixel *averaging* does.
+    """
+    wave = np.asarray(wave, float)
+    flux = np.asarray(flux, float)
+    ivar = np.asarray(ivar, float)
+    n = (len(wave) // factor) * factor
+    if n < factor:
+        return wave, flux, ivar
+    w = wave[:n].reshape(-1, factor)
+    f = flux[:n].reshape(-1, factor)
+    iv = ivar[:n].reshape(-1, factor)
+    wave_b = w.mean(1)
+    flux_b = f.mean(1)
+    # Combine as the (variance-)mean, with bad pixels (ivar<=0, e.g. masked sky
+    # lines) carrying an enormous variance. A bin that contains one therefore
+    # ends up with a near-zero ivar_b: it stays a valid pixel but with
+    # negligible weight, rather than either being dropped or (worse) inheriting
+    # a moderate weight that would re-inject sky-contaminated flux and re-bias
+    # the kinematics. Empirically this variant recovers velocity dispersions
+    # that match the SDSS fit of the same object; small changes to this
+    # bad-pixel handling do not (the native-resolution fit sits in a biased
+    # global chi2 minimum, so the combination rule matters).
+    var = 1.0 / np.clip(iv, 1e-30, None)
+    ivar_b = 1.0 / np.clip(var.mean(1), 1e-30, None)
+    return wave_b, flux_b, ivar_b
+
+
+def _bin_lsf(wave, lsf_fwhm, factor):
+    """Bin a per-pixel FWHM array like :func:`_bin_spectrum` bins the flux.
+
+    Averaging ``factor`` pixels is an extra boxcar convolution; the widening it
+    adds on top of the boxcar already contained in the native LSF is
+    ``sqrt((factor**2 - 1)/12) * dlam`` in sigma, added in quadrature.
+    """
+    wave = np.asarray(wave, float)
+    lsf = np.asarray(lsf_fwhm, float)
+    n = (len(lsf) // factor) * factor
+    if n < factor:
+        return lsf
+    dlam = np.abs(np.median(np.diff(wave))) if len(wave) > 1 else 0.0
+    sig = lsf[:n].reshape(-1, factor).mean(1) / 2.3548200
+    extra = np.sqrt((factor ** 2 - 1.0) / 12.0) * dlam
+    return 2.3548200 * np.sqrt(sig ** 2 + extra ** 2)
+
+
+def _load_spectrum(path, z, target_id, desi_bin_factor=2):
     """Load a spectrum: DESI ``.npz`` cache (see spectrum_acquisition.py),
-    else an SDSS-style FITS (tried first), else a generic FITS."""
+    else an SDSS-style FITS (tried first), else a generic FITS.
+
+    DESI spectra (``.npz``) are averaged down by ``desi_bin_factor`` (default 2:
+    0.8 -> 1.6 Angstrom) before fitting; see :func:`_bin_spectrum` for why this
+    is required for unbiased pPXF kinematics. Set ``desi_bin_factor=1`` to
+    disable."""
     if path.endswith(".npz"):
         from xpectrafit.core.spectrum import Spectrum
         data = np.load(path)
-        return Spectrum.from_ivar(data["wave"], data["flux"], data["ivar"],
-                                  z=z, target_id=target_id)
+        wave, flux, ivar = data["wave"], data["flux"], data["ivar"]
+        # Per-pixel instrumental FWHM, only in caches written after the LSF
+        # support landed; absent -> scalar fwhm_gal fallback downstream.
+        lsf = np.asarray(data["lsf_fwhm"], float) if "lsf_fwhm" in data.files else None
+        if desi_bin_factor and desi_bin_factor > 1:
+            n_in = len(wave)
+            wave, flux, ivar = _bin_spectrum(wave, flux, ivar, desi_bin_factor)
+            if lsf is not None and len(lsf) == n_in:
+                lsf = _bin_lsf(np.asarray(data["wave"], float), lsf,
+                               desi_bin_factor)
+        # DESI wavelengths are vacuum; Spectrum converts them to air.
+        return Spectrum.from_ivar(wave, flux, ivar, z=z, target_id=target_id,
+                                  vacuum=True, lsf_fwhm=lsf)
 
     from xpectrafit.io.loaders import load_sdss, load_generic_fits
     try:
@@ -141,7 +217,9 @@ def run_spectral_fit(target, survey_filters=None, fit_agn=True,
     spectrum_fwhm : float
         Instrumental FWHM (Angstrom) used when the target dict does not
         carry its own ``spectrum_fwhm`` (config key
-        ``spectroscopy.spectrum_fwhm``).
+        ``spectroscopy.spectrum_fwhm``). Only a fallback: when the DESI
+        ``.npz`` cache carries a per-pixel ``lsf_fwhm`` array it is used
+        instead, so pPXF convolves with the real instrumental resolution.
 
     Returns
     -------
@@ -169,7 +247,8 @@ def run_spectral_fit(target, survey_filters=None, fit_agn=True,
             spec.wave, spec.flux, spec.flux_err, z=float(z),
             ra=target.get("ra"), dec=target.get("dec"),
             target_id=target_id,
-            fwhm_gal=target.get("spectrum_fwhm", spectrum_fwhm),
+            fwhm_gal=(spec.lsf_fwhm if getattr(spec, "lsf_fwhm", None) is not None
+                      else target.get("spectrum_fwhm", spectrum_fwhm)),
             fit_agn=bool(fit_agn),
             survey_filters=survey_filters,
         ).fit()
@@ -197,6 +276,7 @@ def run_spectral_fit(target, survey_filters=None, fit_agn=True,
             "log_MBH_Hbeta": result.log_MBH_Hbeta,
             "sigma": result.sigma,
             "sigma_err": result.sigma_err,
+            "sigma_unresolved": bool(getattr(result, "sigma_unresolved", False)),
             "chi2_reduced": result.chi2_reduced,
             "agn_dominated": bool(result.agn_dominated),
         }

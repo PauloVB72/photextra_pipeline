@@ -185,16 +185,24 @@ def _cached_desi_npz(spec_dir, targetid):
     return path if os.path.exists(path) and os.path.getsize(path) > 0 else None
 
 
-def _save_desi_npz(spec_dir, targetid, wave, flux, ivar, z):
+def _save_desi_npz(spec_dir, targetid, wave, flux, ivar, z, lsf_fwhm=None):
     os.makedirs(spec_dir, exist_ok=True)
     path = os.path.join(spec_dir, f"desi_{targetid}.npz")
+    extra = {}
+    if lsf_fwhm is not None:
+        lsf = np.asarray(lsf_fwhm, float)
+        if lsf.size == np.size(wave):
+            # Per-pixel instrumental FWHM [A]; older caches lack it and the
+            # scalar spectrum_fwhm stays the fallback.
+            extra["lsf_fwhm"] = lsf
     np.savez(path, wave=np.asarray(wave, float), flux=np.asarray(flux, float),
-              ivar=np.asarray(ivar, float), z=float(z) if z is not None else np.nan)
+              ivar=np.asarray(ivar, float), z=float(z) if z is not None else np.nan,
+              **extra)
     return path
 
 
 def _desi_via_sparcl(targetid, dataset="DESI-DR1"):
-    """Primary DESI path: SPARCL. Returns (wave, flux, ivar, z) or None."""
+    """Primary DESI path: SPARCL. Returns (wave, flux, ivar, z, lsf) or None."""
     from xpectrafit.io.downloader import download_desi_sparcl
     recs = _call_with_retries(
         lambda: download_desi_sparcl(targetids=[int(targetid)], dataset=dataset),
@@ -202,7 +210,7 @@ def _desi_via_sparcl(targetid, dataset="DESI-DR1"):
     if not recs:
         return None
     r = recs[0]
-    return r["wave"], r["flux"], r["ivar"], r.get("z")
+    return r["wave"], r["flux"], r["ivar"], r.get("z"), r.get("lsf_fwhm")
 
 
 def _desi_via_datalab(targetid, table="desi_dr1.zpix"):
@@ -234,20 +242,48 @@ def _desi_via_datalab(targetid, table="desi_dr1.zpix"):
             return None
         row = int(matches[0])
         names = [hd.name for hd in h]
-        ws, fs, iv = [], [], []
+        ws, fs, iv, ls = [], [], [], []
         for arm in ("B", "R", "Z"):
             if f"{arm}_WAVELENGTH" not in names:
                 continue
-            ws.append(np.asarray(h[f"{arm}_WAVELENGTH"].data, float))
+            lam = np.asarray(h[f"{arm}_WAVELENGTH"].data, float)
+            ws.append(lam)
             fl = np.asarray(h[f"{arm}_FLUX"].section[row], float)
             iv.append(np.asarray(h[f"{arm}_IVAR"].section[row], float)
                       if f"{arm}_IVAR" in names else np.ones_like(fl))
             fs.append(fl)
+            if f"{arm}_RESOLUTION" in names:
+                res = np.asarray(h[f"{arm}_RESOLUTION"].section[row], float)
+                ls.append(_resolution_to_fwhm(res, lam))
+            else:
+                ls.append(np.full_like(lam, np.nan))
         wave = np.concatenate(ws)
         flux = np.concatenate(fs)
         ivar = np.concatenate(iv)
+        lsf = np.concatenate(ls)
         order = np.argsort(wave)
-    return wave[order], flux[order], ivar[order], float(z)
+    lsf = lsf[order]
+    if not np.isfinite(lsf).any():
+        lsf = None
+    return wave[order], flux[order], ivar[order], float(z), lsf
+
+
+def _resolution_to_fwhm(res, lam):
+    """Per-pixel FWHM [A] from a DESI banded resolution matrix (ndiag, nwave).
+
+    Each column is the LSF kernel sampled on the diagonal offsets; its second
+    moment in pixel units times the pixel size gives sigma in Angstrom.
+    """
+    res = np.asarray(res, float)
+    ndiag = res.shape[0]
+    off = np.arange(ndiag, dtype=float) - (ndiag - 1) / 2.0
+    w = np.clip(res, 0.0, None)
+    tot = w.sum(axis=0)
+    tot[tot <= 0] = np.nan
+    mean = (off[:, None] * w).sum(axis=0) / tot
+    var = ((off[:, None] - mean) ** 2 * w).sum(axis=0) / tot
+    dlam = np.gradient(np.asarray(lam, float))
+    return 2.3548200 * np.sqrt(np.clip(var, 0.0, None)) * np.abs(dlam)
 
 
 def resolve_desi_spectrum(targetid, z=None, output_dir="."):
@@ -287,11 +323,11 @@ def resolve_desi_spectrum(targetid, z=None, output_dir="."):
         logger.warning("no DESI spectrum found for targetid=%s", targetid)
         return None
 
-    wave, flux, ivar, z_ret = got
-    logger.info("DESI spectrum for targetid=%s resolved via %s",
-               targetid, source)
+    wave, flux, ivar, z_ret, lsf = got
+    logger.info("DESI spectrum for targetid=%s resolved via %s (LSF: %s)",
+               targetid, source, "yes" if lsf is not None else "no")
     return _save_desi_npz(output_dir, targetid, wave, flux, ivar,
-                          z_ret if z_ret is not None else z)
+                          z_ret if z_ret is not None else z, lsf_fwhm=lsf)
 
 
 def _infer_spectrum_source(path):

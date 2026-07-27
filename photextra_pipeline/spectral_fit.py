@@ -277,6 +277,7 @@ def run_spectral_fit(target, survey_filters=None, fit_agn=True,
             "sigma": result.sigma,
             "sigma_err": result.sigma_err,
             "sigma_unresolved": bool(getattr(result, "sigma_unresolved", False)),
+            "agn_feii_fwhm": getattr(result, "agn_feii_fwhm", np.nan),
             "chi2_reduced": result.chi2_reduced,
             "agn_dominated": bool(result.agn_dominated),
         }
